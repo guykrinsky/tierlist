@@ -80,20 +80,11 @@ export function calculateRoundResults(
     let playerPointsEarned = 0;
     let judgePointsEarned = 0;
 
-    // Scoring: Players earn points by FOOLING the judge
-    // If judge gets position WRONG, player earns 1 point
-    if (!positionCorrect) {
+    // Scoring: Only exact number guesses count!
+    // Position guesses don't give points - they're just for ordering
+    // If judge guesses the EXACT NUMBER correctly, BOTH get +1
+    if (numberCorrect) {
       playerPointsEarned += 1;
-    } else {
-      // Judge gets 1 point for correct position guess
-      judgePointsEarned += 1;
-    }
-
-    // If judge gets number WRONG or doesn't guess, player earns 1 point
-    if (!numberCorrect) {
-      playerPointsEarned += 1;
-    } else {
-      // Judge gets 1 point for correct number guess
       judgePointsEarned += 1;
     }
 

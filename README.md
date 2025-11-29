@@ -17,14 +17,16 @@ A multiplayer party game where players try to fool the judge by picking items th
 
 ## 🏆 Scoring
 
+The Judge orders players from lowest to highest number, then can guess their **exact numbers**.
+
 | Action | Points |
 |--------|--------|
-| Judge gets your **position wrong** | Player +1 |
-| Judge gets your **number wrong** | Player +1 |
-| Judge gets position **correct** | Judge +1 |
-| Judge gets number **correct** | Judge +1 |
+| Judge guesses your **exact number** | **Both** Player +1 AND Judge +1 |
+| Position ordering | No points (just for fun!) |
 
 **First to 10 points wins!**
+
+> 💡 **Strategy Tip**: As a player, try to pick items that could match multiple numbers to confuse the Judge!
 
 ## ✨ Features
 

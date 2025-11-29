@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Trophy, ArrowRight, Star, ShieldCheck, ShieldX } from "lucide-react";
+import { XCircle, Trophy, ArrowRight, Star } from "lucide-react";
 
 interface PlayerResult {
   playerId: string;
@@ -100,36 +100,27 @@ export function ResultScreen({
 
                 <div className="flex flex-col items-end gap-1">
                   <div className="flex items-center gap-2">
-                    {result.positionCorrect ? (
-                      // Judge was correct - bad for player
-                      <ShieldX className="w-5 h-5 text-red-400" />
-                    ) : (
-                      // Player fooled judge - good for player!
-                      <ShieldCheck className="w-5 h-5 text-green-500" />
-                    )}
                     <span className="text-sm text-muted-foreground">
-                      Pos: {result.judgePositionGuess} {result.positionCorrect ? "✓" : `→ was ${result.actualPosition}`}
+                      Position: {result.judgePositionGuess} {result.positionCorrect ? "✓" : `→ ${result.actualPosition}`}
                     </span>
                   </div>
-                  {result.judgeNumberGuess !== null && (
+                  {result.judgeNumberGuess !== null ? (
                     <div className="flex items-center gap-2">
                       {result.numberCorrect ? (
-                        // Judge guessed number - bad for player
+                        // Judge guessed exact number - both get points!
                         <Star className="w-5 h-5 text-yellow-500" />
                       ) : (
-                        // Player fooled judge on number - good for player!
-                        <ShieldCheck className="w-5 h-5 text-green-500" />
+                        <XCircle className="w-5 h-5 text-muted-foreground" />
                       )}
-                      <span className="text-sm text-muted-foreground">
-                        #{result.judgeNumberGuess} {result.numberCorrect ? "✓" : "✗"}
+                      <span className={`text-sm ${result.numberCorrect ? "text-yellow-500 font-medium" : "text-muted-foreground"}`}>
+                        Guessed #{result.judgeNumberGuess} {result.numberCorrect ? "🎯 EXACT!" : "✗"}
                       </span>
                     </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No number guess</span>
                   )}
-                  {result.judgeNumberGuess === null && (
-                    <span className="text-xs text-muted-foreground">No # guess (+1)</span>
-                  )}
-                  <p className="text-lg font-bold text-green-500">
-                    +{result.playerPointsEarned} pts
+                  <p className={`text-lg font-bold ${result.playerPointsEarned > 0 ? "text-yellow-500" : "text-muted-foreground"}`}>
+                    {result.playerPointsEarned > 0 ? `+${result.playerPointsEarned} pts` : "0 pts"}
                   </p>
                 </div>
               </div>

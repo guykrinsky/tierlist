@@ -327,20 +327,11 @@ BEGIN
     FROM json_to_recordset(v_actual_positions) AS x(player_id UUID, value INTEGER, actual_position INTEGER)
     WHERE x.player_id = v_player.id;
 
-    -- Scoring: Players earn points by FOOLING the judge
-    -- If judge gets position WRONG, player earns 1 point
-    IF v_guess.position_guess != v_position THEN
+    -- Scoring: Only exact number guesses count!
+    -- Position guesses don't give points - they're just for ordering
+    -- If judge guesses the EXACT NUMBER correctly, BOTH player and judge get +1
+    IF v_guess.number_guess IS NOT NULL AND v_guess.number_guess = v_secret.value THEN
       v_player_points := v_player_points + 1;
-    ELSE
-      -- Judge gets 1 point for correct position guess
-      v_judge_points := v_judge_points + 1;
-    END IF;
-
-    -- If judge gets number WRONG or doesn't guess, player earns 1 point
-    IF v_guess.number_guess IS NULL OR v_guess.number_guess != v_secret.value THEN
-      v_player_points := v_player_points + 1;
-    ELSE
-      -- Judge gets 1 point for correct number guess
       v_judge_points := v_judge_points + 1;
     END IF;
 

@@ -365,16 +365,19 @@ export default function HomePage() {
               <h3 className="font-bold text-white mb-4">Scoring</h3>
               <div className="text-left space-y-2 text-sm">
                 <p className="text-muted-foreground">
-                  <span className="text-green-500 font-medium">Players:</span> Earn points by <span className="text-white">fooling</span> the Judge!
-                </p>
-                <p className="text-muted-foreground">
-                  <span className="text-tierlist-blue font-medium">+1 point</span> if Judge gets your position wrong
-                </p>
-                <p className="text-muted-foreground">
-                  <span className="text-tierlist-blue font-medium">+1 point</span> if Judge gets your number wrong
+                  The Judge orders players and can guess their <span className="text-white">exact numbers</span>
                 </p>
                 <p className="text-muted-foreground mt-3">
-                  <span className="text-tierlist-red font-medium">Judge:</span> Earns <span className="text-white">+1</span> for each correct guess
+                  <span className="text-yellow-500 font-medium">🎯 Exact Number Guess:</span>
+                </p>
+                <p className="text-muted-foreground pl-4">
+                  <span className="text-tierlist-blue font-medium">+1 point</span> to the Player
+                </p>
+                <p className="text-muted-foreground pl-4">
+                  <span className="text-tierlist-red font-medium">+1 point</span> to the Judge
+                </p>
+                <p className="text-muted-foreground mt-3 text-xs">
+                  (Position ordering is just for fun - no points!)
                 </p>
                 <p className="text-muted-foreground mt-3">
                   First to <span className="text-yellow-500 font-medium">10 points</span> wins!
