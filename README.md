@@ -1,31 +1,52 @@
-# TIERLIST - The Party Game 🎮
+# 🎮 TIERLIST - The Party Game
 
-A real-time multiplayer party game where players guess rankings! Built with Next.js 14, Supabase, and TailwindCSS.
+A multiplayer party game where players try to fool the judge by picking items that match their secret number!
 
-## 🎯 Game Rules
+![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
+![Supabase](https://img.shields.io/badge/Supabase-Realtime-green)
 
-1. **Judge Selection**: At the start of each turn, one player becomes the "Judge"
-2. **Category Card**: The Judge receives a category (e.g., "Animals", "Sports", "Snacks")
-3. **Secret Numbers**: Each non-Judge player receives a secret number from 1-10
-4. **Submit Items**: Players say an item from the category that matches their number's ranking
-5. **Judge Guesses**: The Judge orders players from lowest to highest and tries to guess exact numbers
+## 🎯 How to Play
 
-### Scoring
-- **+1 point** to player if Judge places them in the correct position
-- **+1 point** to both Judge AND player if Judge guesses the exact number
-- First to reach the winning score (default: 10) wins!
+1. **Create or Join a Room** - One player creates a room and shares the code with friends
+2. **Judge Picks Category** - Each round, one player becomes the Judge and picks a category (e.g., "Foods That Slap at 3 AM")
+3. **Players Get Secret Numbers** - Non-judge players receive a random number from 1-10
+4. **Submit Your Item** - Pick something from the category that matches your number (1 = worst, 10 = best)
+5. **Judge Guesses** - The Judge orders players from lowest to highest and tries to guess their exact numbers
+6. **Score Points** - Players earn points by FOOLING the judge!
 
-## 🚀 Getting Started
+## 🏆 Scoring
+
+| Action | Points |
+|--------|--------|
+| Judge gets your **position wrong** | Player +1 |
+| Judge gets your **number wrong** | Player +1 |
+| Judge gets position **correct** | Judge +1 |
+| Judge gets number **correct** | Judge +1 |
+
+**First to 10 points wins!**
+
+## ✨ Features
+
+- 🎲 **250+ Categories** - From "Cereal Mascots You'd Trust with Your Life" to "Foods That Look Disgusting But Slap"
+- 🃏 **Joker Category** - Judge can create custom categories
+- ⏱️ **60-Second Timer** - Keep the game moving
+- 🎵 **Background Music** - Add your own theme song
+- 📱 **Mobile Friendly** - Play on any device
+- 🔄 **Real-time Sync** - Instant updates for all players
+- 🏠 **Room Browser** - See and join active games
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ 
-- A Supabase account (free tier works)
+- Node.js 18+
+- A [Supabase](https://supabase.com) account (free tier works!)
 
-### 1. Clone and Install
+### 1. Clone the Repository
 
 ```bash
-git clone <your-repo>
+git clone https://github.com/guykrinsky/tierlist.git
 cd tierlist
 npm install
 ```
@@ -33,127 +54,117 @@ npm install
 ### 2. Set Up Supabase
 
 1. Create a new project at [supabase.com](https://supabase.com)
-2. Go to the SQL Editor and run the schema from `supabase/schema.sql`
-3. Copy your project URL and anon key from Settings > API
+2. Go to **SQL Editor** and run the contents of `supabase/schema.sql`
+3. Go to **Settings → API** and copy your credentials
 
-### 3. Configure Environment Variables
+### 3. Configure Environment
 
 Create a `.env.local` file:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### 4. Run the Development Server
+### 4. Run the Game
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to play!
+Open [http://localhost:3000](http://localhost:3000) and start playing!
+
+## 🎵 Adding Background Music
+
+1. Add your music file to `public/music/theme.mp3`
+2. The music player will appear in the bottom-right corner
+3. Click to play/pause, adjust volume as needed
+
+## 🌐 Deployment
+
+### Deploy to Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Go to [vercel.com](https://vercel.com) and import your repository
+3. Add your environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Deploy!
+
+### Configure Supabase for Production
+
+1. Go to **Authentication → URL Configuration**
+2. Add your Vercel URL to **Site URL**
+3. Add your Vercel URL to **Redirect URLs**
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS, Framer Motion
+- **Database**: Supabase (PostgreSQL)
+- **Real-time**: Supabase Realtime subscriptions
+- **Drag & Drop**: dnd-kit
 
 ## 📁 Project Structure
 
 ```
 tierlist/
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx           # Home page
-│   ├── create/page.tsx    # Create room page
-│   ├── join/page.tsx      # Join room page
+├── app/                    # Next.js app router pages
+│   ├── page.tsx           # Home page with room list
+│   ├── create/            # Create room page
+│   ├── join/              # Join room page
 │   └── room/[roomId]/     # Game room page
 ├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   ├── Logo.tsx
-│   ├── CategoryCard.tsx
-│   ├── NumberHintCard.tsx
-│   ├── PlayerSpeechInput.tsx
-│   ├── JudgeOrderingBoard.tsx
-│   ├── JudgeNumberGuessInputs.tsx
-│   ├── ResultScreen.tsx
-│   ├── Scoreboard.tsx
-│   ├── WaitingRoom.tsx
-│   └── GameOver.tsx
-├── hooks/                # Custom React hooks
+│   ├── ui/               # Base UI components
+│   ├── CategorySelector  # Judge's category picker
+│   ├── PlayerSpeechInput # Player submission form
+│   ├── JudgeOrderingBoard # Drag-to-order interface
+│   └── ...
+├── hooks/                 # Custom React hooks
 │   ├── useGameState.ts   # Main game state management
-│   └── useLocalPlayer.ts # Local storage for player data
-├── lib/                  # Utility functions
-│   ├── utils.ts
-│   └── supabase/        # Supabase clients
+│   └── useLocalPlayer.ts # Player identification
 ├── data/
-│   └── categories.ts    # 200+ game categories
-├── types/
-│   └── index.ts         # TypeScript types
-└── supabase/
-    └── schema.sql       # Database schema
+│   └── categories.ts     # 250+ game categories
+├── supabase/
+│   └── schema.sql        # Database schema & functions
+└── public/
+    └── music/            # Background music files
 ```
 
-## 🗄️ Database Schema
+## 🎮 Game Flow
 
-- **rooms** - Game rooms with status and settings
-- **players** - Players in each room with scores
-- **rounds** - Each round with category and judge
-- **secrets** - Secret numbers for non-judge players
-- **submissions** - Player item submissions
-- **guesses** - Judge position and number guesses
-
-## 🎨 Tech Stack
-
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: TailwindCSS
-- **UI Components**: shadcn/ui
-- **Database**: Supabase (PostgreSQL)
-- **Real-time**: Supabase Realtime
-- **Animations**: Framer Motion
-- **Drag & Drop**: dnd-kit
-
-## 🎮 Features
-
-- ✅ Create and join rooms with codes
-- ✅ Real-time multiplayer updates
-- ✅ Drag-and-drop ordering interface
-- ✅ Automatic scoring
-- ✅ 200+ categories
-- ✅ Mobile-friendly design
-- ✅ Dark theme with blue/red brand colors
-- ✅ Animated UI transitions
-
-## 📱 Screenshots
-
-The game features a modern, dark-themed UI with:
-- Clean waiting room with room code sharing
-- Category reveal cards
-- Secret number hints for players
-- Drag-and-drop judge interface
-- Animated result screens
-- Live scoreboard
-
-## 🛠️ Development
-
-```bash
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Lint code
-npm run lint
 ```
-
-## 📄 License
-
-MIT License - feel free to use this for your own party games!
+┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
+│  Waiting    │────▶│ Category Select  │────▶│  Submitting │
+│   Room      │     │   (Judge picks)  │     │  (Players)  │
+└─────────────┘     └──────────────────┘     └─────────────┘
+                                                    │
+┌─────────────┐     ┌──────────────────┐            ▼
+│  Game Over  │◀────│    Results       │◀────┌─────────────┐
+│  (Winner!)  │     │  (Show scores)   │     │   Judging   │
+└─────────────┘     └──────────────────┘     │(Judge orders)│
+                           │                 └─────────────┘
+                           │
+                           ▼
+                    ┌──────────────────┐
+                    │   Next Round     │
+                    │ (New judge picks)│
+                    └──────────────────┘
+```
 
 ## 🤝 Contributing
 
-Pull requests welcome! Please follow the existing code style and add tests for new features.
+Contributions are welcome! Feel free to:
+
+- 🐛 Report bugs
+- 💡 Suggest new features
+- 🎨 Add new categories
+- 🔧 Submit pull requests
+
+## 📜 License
+
+MIT License - feel free to use this for your own party games!
 
 ---
 
-Made with ❤️ for game nights everywhere!
-
+**Made with ❤️ for game nights everywhere**
