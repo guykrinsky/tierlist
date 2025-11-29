@@ -290,6 +290,8 @@ DECLARE
   v_judge_points INTEGER := 0;
   v_judge_id UUID;
   v_room_id TEXT;
+  v_all_positions_correct BOOLEAN := TRUE;
+  v_player_count INTEGER := 0;
 BEGIN
   -- Get judge_id and room_id
   SELECT judge_id, room_id INTO v_judge_id, v_room_id FROM rounds WHERE id = p_round_id;
@@ -317,6 +319,7 @@ BEGIN
     WHERE p.room_id = v_room_id AND p.id != v_judge_id 
   LOOP
     v_player_points := 0;
+    v_player_count := v_player_count + 1;
     
     -- Get secret and guess for this player
     SELECT value INTO v_secret FROM secrets WHERE round_id = p_round_id AND player_id = v_player.id;
@@ -327,13 +330,12 @@ BEGIN
     FROM json_to_recordset(v_actual_positions) AS x(player_id UUID, value INTEGER, actual_position INTEGER)
     WHERE x.player_id = v_player.id;
 
-    -- Scoring:
-    -- 1. Position correct → Judge +1 (player gets nothing)
-    IF v_guess.position_guess = v_position THEN
-      v_judge_points := v_judge_points + 1;
+    -- Check if position is correct (for full ordering check)
+    IF v_guess.position_guess != v_position THEN
+      v_all_positions_correct := FALSE;
     END IF;
 
-    -- 2. Number correct → Both Judge +1 AND Player +1
+    -- Number correct → Both Judge +1 AND Player +1
     IF v_guess.number_guess IS NOT NULL AND v_guess.number_guess = v_secret.value THEN
       v_player_points := v_player_points + 1;
       v_judge_points := v_judge_points + 1;
@@ -342,6 +344,11 @@ BEGIN
     -- Update player score
     UPDATE players SET score = score + v_player_points WHERE id = v_player.id;
   END LOOP;
+
+  -- Judge gets +1 only if ALL positions are correct (full ordering bonus)
+  IF v_all_positions_correct AND v_player_count > 0 THEN
+    v_judge_points := v_judge_points + 1;
+  END IF;
 
   -- Update judge score
   UPDATE players SET score = score + v_judge_points WHERE id = v_judge_id;

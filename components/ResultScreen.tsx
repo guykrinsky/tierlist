@@ -26,6 +26,7 @@ interface ResultScreenProps {
   category: string;
   onNextRound: () => void;
   isHost: boolean;
+  allPositionsCorrect?: boolean;
 }
 
 export function ResultScreen({
@@ -35,6 +36,7 @@ export function ResultScreen({
   category,
   onNextRound,
   isHost,
+  allPositionsCorrect,
 }: ResultScreenProps) {
   // Sort results by actual position (secret number)
   const sortedResults = [...results].sort((a, b) => a.actualPosition - b.actualPosition);
@@ -72,6 +74,19 @@ export function ResultScreen({
             </p>
           </div>
         </div>
+        {allPositionsCorrect !== undefined && (
+          <div className="mt-3 pt-3 border-t border-tierlist-blue/30">
+            {allPositionsCorrect ? (
+              <p className="text-green-400 font-medium">
+                🏆 Perfect ordering! Judge earned +1 bonus point
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                Ordering incorrect - no bonus point for judge
+              </p>
+            )}
+          </div>
+        )}
       </Card>
 
       <div className="space-y-3">
@@ -102,7 +117,7 @@ export function ResultScreen({
                   <div className="flex items-center gap-2">
                     {result.positionCorrect ? (
                       <span className="text-sm text-green-400">
-                        Position ✓ (Judge +1)
+                        Position ✓
                       </span>
                     ) : (
                       <span className="text-sm text-muted-foreground">

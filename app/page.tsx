@@ -368,19 +368,16 @@ export default function HomePage() {
                   The Judge guesses each player's <span className="text-white">position</span> and <span className="text-white">exact number</span>
                 </p>
                 <p className="text-muted-foreground mt-3">
-                  <span className="text-tierlist-blue font-medium">📊 Position Correct:</span>
+                  <span className="text-tierlist-blue font-medium">🏆 Perfect Ordering:</span>
                 </p>
                 <p className="text-muted-foreground pl-4">
-                  <span className="text-tierlist-red font-medium">+1 point</span> to the Judge
+                  All positions correct → <span className="text-tierlist-red font-medium">+1 point</span> to the Judge
                 </p>
                 <p className="text-muted-foreground mt-3">
                   <span className="text-yellow-500 font-medium">🎯 Exact Number Correct:</span>
                 </p>
                 <p className="text-muted-foreground pl-4">
-                  <span className="text-tierlist-red font-medium">+1 point</span> to the Judge
-                </p>
-                <p className="text-muted-foreground pl-4">
-                  <span className="text-tierlist-blue font-medium">+1 point</span> to the Player
+                  <span className="text-tierlist-red font-medium">+1 point</span> to the Judge AND <span className="text-tierlist-blue font-medium">+1 point</span> to the Player
                 </p>
                 <p className="text-muted-foreground mt-3">
                   First to <span className="text-yellow-500 font-medium">10 points</span> wins!

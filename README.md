@@ -17,11 +17,11 @@ A multiplayer party game where players try to fool the judge by picking items th
 
 ## 🏆 Scoring
 
-The Judge guesses each player's **position** (rank 1-10) and can also guess their **exact number**.
+The Judge guesses each player's **position** (rank low→high) and can also guess their **exact number**.
 
 | Action | Points |
 |--------|--------|
-| Judge guesses **position correct** | Judge +1 |
+| Judge gets **ALL positions correct** | Judge +1 (one-time bonus) |
 | Judge guesses **exact number correct** | Judge +1 AND Player +1 |
 
 **First to 10 points wins!**

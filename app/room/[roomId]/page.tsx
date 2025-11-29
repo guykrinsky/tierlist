@@ -11,6 +11,7 @@ import { CategorySelector } from "@/components/CategorySelector";
 import { NumberHintCard } from "@/components/NumberHintCard";
 import { PlayerSpeechInput } from "@/components/PlayerSpeechInput";
 import { JudgeNumberGuessInputs } from "@/components/JudgeNumberGuessInputs";
+import { AutomaticOrderingView } from "@/components/AutomaticOrderingView";
 import { ResultScreen } from "@/components/ResultScreen";
 import { Scoreboard } from "@/components/Scoreboard";
 import { GameOver } from "@/components/GameOver";
@@ -521,24 +522,35 @@ export default function RoomPage() {
                 />
               )}
 
-              {/* Phase: Judging - Non-Judge View */}
+              {/* Phase: Judging - Non-Judge View: Show automatic ordering */}
               {currentRound?.phase === "judging" && !isJudge && (
-                <Card className="p-6">
-                  <div className="text-center">
-                    <motion.div
-                      animate={{ rotate: [0, 10, -10, 0] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      <Gavel className="w-12 h-12 mx-auto text-tierlist-blue mb-4" />
-                    </motion.div>
-                    <h3 className="text-xl font-bold text-white mb-2">
-                      Judge is Deliberating
-                    </h3>
-                    <p className="text-muted-foreground">
-                      {judge?.name} is ordering players and guessing numbers...
-                    </p>
-                  </div>
-                </Card>
+                <div className="space-y-4">
+                  <Card className="p-4 bg-tierlist-blue/10 border-tierlist-blue/30">
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        animate={{ rotate: [0, 10, -10, 0] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <Gavel className="w-8 h-8 text-tierlist-blue" />
+                      </motion.div>
+                      <div>
+                        <h3 className="font-bold text-white">Judge is Deliberating</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {judge?.name} is guessing everyone&apos;s numbers...
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  {/* Show the automatic ordering to non-judge players */}
+                  <AutomaticOrderingView
+                    submissions={submissions}
+                    secrets={secrets}
+                    players={players}
+                    myPlayerId={currentPlayer?.id || ""}
+                    mySecret={mySecret}
+                  />
+                </div>
               )}
 
               {/* Phase: Results */}
@@ -555,6 +567,7 @@ export default function RoomPage() {
                         category={currentRound.category}
                         onNextRound={handleNextRound}
                         isHost={currentPlayer?.is_host || false}
+                        allPositionsCorrect={resultsData.allPositionsCorrect}
                       />
                     );
                   })()}

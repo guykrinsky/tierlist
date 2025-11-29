@@ -54,6 +54,7 @@ export function calculateRoundResults(
     judgePointsEarned: number;
   }[];
   totalJudgePoints: number;
+  allPositionsCorrect: boolean;
 } {
   // Sort players by their secret number to get actual positions
   const sortedBySecret = [...secrets].sort((a, b) => a.value - b.value);
@@ -63,8 +64,10 @@ export function calculateRoundResults(
   });
 
   let totalJudgePoints = 0;
+  let allPositionsCorrect = true;
 
-  const results = players.map((player) => {
+  // First pass: calculate individual results and check if ALL positions are correct
+  const resultsWithoutOrdering = players.map((player) => {
     const secret = secrets.find((s) => s.player_id === player.id);
     const submission = submissions.find((s) => s.player_id === player.id);
     const guess = guesses.find((g) => g.player_id === player.id);
@@ -77,22 +80,10 @@ export function calculateRoundResults(
     const positionCorrect = judgePositionGuess === actualPosition;
     const numberCorrect = judgeNumberGuess !== null && judgeNumberGuess === secretNumber;
 
-    let playerPointsEarned = 0;
-    let judgePointsEarned = 0;
-
-    // Scoring:
-    // 1. Position correct → Judge +1 (player gets nothing)
-    if (positionCorrect) {
-      judgePointsEarned += 1;
+    // Track if any position is wrong
+    if (!positionCorrect) {
+      allPositionsCorrect = false;
     }
-
-    // 2. Number correct → Both Judge +1 AND Player +1
-    if (numberCorrect) {
-      playerPointsEarned += 1;
-      judgePointsEarned += 1;
-    }
-
-    totalJudgePoints += judgePointsEarned;
 
     return {
       playerId: player.id,
@@ -104,11 +95,38 @@ export function calculateRoundResults(
       actualPosition,
       positionCorrect,
       numberCorrect,
+    };
+  });
+
+  // Second pass: calculate points with new scoring rules
+  const results = resultsWithoutOrdering.map((result) => {
+    let playerPointsEarned = 0;
+    let judgePointsEarned = 0;
+
+    // Scoring:
+    // 1. ALL positions correct → Judge gets +1 total (not per-position)
+    //    We'll add this to totalJudgePoints once after the loop
+
+    // 2. Number correct → Both Judge +1 AND Player +1
+    if (result.numberCorrect) {
+      playerPointsEarned += 1;
+      judgePointsEarned += 1;
+    }
+
+    totalJudgePoints += judgePointsEarned;
+
+    return {
+      ...result,
       playerPointsEarned,
       judgePointsEarned,
     };
   });
 
-  return { results, totalJudgePoints };
+  // Add +1 for full correct ordering
+  if (allPositionsCorrect && players.length > 0) {
+    totalJudgePoints += 1;
+  }
+
+  return { results, totalJudgePoints, allPositionsCorrect };
 }
 

@@ -148,54 +148,98 @@ export function useGameState(roomId: string, playerId: string | null) {
   // Keep track of debounced fetch
   const debouncedFetchRef = useRef<ReturnType<typeof debounce> | null>(null);
 
-  // Subscribe to realtime updates
+  // Track submission count locally to avoid unnecessary re-renders
+  const submissionCountRef = useRef(0);
+  const currentPhaseRef = useRef<string | null>(null);
+
+  // Subscribe to realtime updates - OPTIMIZED to prevent unnecessary refreshes
   useEffect(() => {
     fetchGameData();
 
-    // Create a debounced version of fetchGameData (300ms delay)
-    // This prevents multiple rapid fetches when several changes happen at once
-    const debouncedFetch = debounce(() => {
-      fetchGameData();
-    }, 300);
-    debouncedFetchRef.current = debouncedFetch;
-
-    // Set up realtime subscriptions - only fetch on important phase changes
+    // Set up realtime subscriptions with smart filtering
     const channel = supabase
       .channel(`room:${roomId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rooms", filter: `id=eq.${roomId}` },
-        () => debouncedFetch()
+        (payload) => {
+          // Only refetch on status changes, not every update
+          const newStatus = (payload.new as { status?: string })?.status;
+          if (newStatus) {
+            fetchGameData();
+          }
+        }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "players", filter: `room_id=eq.${roomId}` },
-        () => debouncedFetch()
+        (payload) => {
+          // Only refetch on player join/leave, not score updates during game
+          if (payload.eventType === "INSERT" || payload.eventType === "DELETE") {
+            fetchGameData();
+          }
+          // Score updates will be fetched when round ends
+        }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rounds", filter: `room_id=eq.${roomId}` },
-        // Round changes are important - fetch immediately for phase transitions
-        () => fetchGameData()
+        (payload) => {
+          // Round phase changes are critical - always fetch
+          const newPhase = (payload.new as { phase?: string })?.phase;
+          if (newPhase && newPhase !== currentPhaseRef.current) {
+            currentPhaseRef.current = newPhase;
+            fetchGameData();
+          }
+        }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "submissions" },
-        // Submissions should NOT trigger re-fetch for non-judges during submitting phase
-        // to avoid disruption - use debounce
-        () => debouncedFetch()
+        (payload) => {
+          // For submissions: only update count for judge view, don't refresh other players
+          if (payload.eventType === "INSERT") {
+            const newSubmission = payload.new as { player_id?: string };
+            // If this is MY submission, I already updated locally - skip
+            if (newSubmission.player_id === playerId) {
+              return;
+            }
+            // For judge: increment count without full refresh
+            setGameState(prev => {
+              // Only add if not already present
+              const exists = prev.submissions.some(s => 
+                s.player_id === newSubmission.player_id
+              );
+              if (exists) return prev;
+              
+              submissionCountRef.current = prev.submissions.length + 1;
+              // Just update submission count for UI, don't fetch full data
+              return {
+                ...prev,
+                submissions: [...prev.submissions, newSubmission as Submission]
+              };
+            });
+          }
+        }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "guesses" },
-        // Guesses trigger results - fetch immediately
-        () => fetchGameData()
+        () => {
+          // Guesses mean round is ending - fetch results
+          fetchGameData();
+        }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "secrets" },
-        // Secrets are set at round start - debounce is fine
-        () => debouncedFetch()
+        (payload) => {
+          // Only fetch secrets for current player, not everyone
+          const newSecret = payload.new as { player_id?: string };
+          if (newSecret.player_id === playerId) {
+            fetchGameData();
+          }
+        }
       )
       .subscribe();
 
@@ -240,6 +284,20 @@ export function useGameState(roomId: string, playerId: string | null) {
     async (text: string) => {
       if (!gameState.currentRound || !playerId) return;
 
+      // Optimistically update local state FIRST (no refresh for this player)
+      const newSubmission: Submission = {
+        id: crypto.randomUUID(),
+        round_id: gameState.currentRound.id,
+        player_id: playerId,
+        text,
+        created_at: new Date().toISOString(),
+      };
+      
+      setGameState(prev => ({
+        ...prev,
+        submissions: [...prev.submissions, newSubmission]
+      }));
+
       const { error } = await supabase.rpc("submit_item", {
         p_round_id: gameState.currentRound.id,
         p_player_id: playerId,
@@ -248,6 +306,11 @@ export function useGameState(roomId: string, playerId: string | null) {
 
       if (error) {
         console.error("Error submitting item:", error);
+        // Revert optimistic update on error
+        setGameState(prev => ({
+          ...prev,
+          submissions: prev.submissions.filter(s => s.id !== newSubmission.id)
+        }));
         throw error;
       }
 
@@ -258,7 +321,7 @@ export function useGameState(roomId: string, playerId: string | null) {
       const submissionCount = gameState.submissions.length + 1;
 
       if (submissionCount >= nonJudgePlayers.length) {
-        // Move to judging phase
+        // Move to judging phase - this will trigger phase change for everyone
         await supabase
           .from("rounds")
           .update({ phase: "judging" })
