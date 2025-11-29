@@ -10,7 +10,6 @@ import { CategoryCard } from "@/components/CategoryCard";
 import { CategorySelector } from "@/components/CategorySelector";
 import { NumberHintCard } from "@/components/NumberHintCard";
 import { PlayerSpeechInput } from "@/components/PlayerSpeechInput";
-import { JudgeOrderingBoard } from "@/components/JudgeOrderingBoard";
 import { JudgeNumberGuessInputs } from "@/components/JudgeNumberGuessInputs";
 import { ResultScreen } from "@/components/ResultScreen";
 import { Scoreboard } from "@/components/Scoreboard";
@@ -22,11 +21,10 @@ import { Loader2, Gavel, Users, Clock, LogOut } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { calculateRoundResults } from "@/lib/utils";
 
-interface OrderedPlayer {
+interface PlayerGuess {
   playerId: string;
   playerName: string;
   submission: string;
-  position: number;
   numberGuess: number | null;
 }
 
@@ -70,26 +68,25 @@ export default function RoomPage() {
     return sortedPlayers[nextJudgeIndex]?.name || "";
   };
 
-  const [orderedPlayers, setOrderedPlayers] = useState<OrderedPlayer[]>([]);
+  const [playerGuesses, setPlayerGuesses] = useState<PlayerGuess[]>([]);
   const [isSubmittingGuesses, setIsSubmittingGuesses] = useState(false);
 
-  // Initialize ordered players when submissions come in
+  // Initialize player guesses when submissions come in
   useEffect(() => {
     if (currentRound?.phase === "judging" && submissions.length > 0) {
       const nonJudgePlayers = players.filter(
         (p) => p.id !== currentRound.judge_id
       );
-      const initialOrder = nonJudgePlayers.map((player, index) => {
+      const initialGuesses = nonJudgePlayers.map((player) => {
         const submission = submissions.find((s) => s.player_id === player.id);
         return {
           playerId: player.id,
           playerName: player.name,
           submission: submission?.text || "",
-          position: index + 1,
           numberGuess: null,
         };
       });
-      setOrderedPlayers(initialOrder);
+      setPlayerGuesses(initialGuesses);
     }
   }, [currentRound?.phase, submissions, players, currentRound?.judge_id]);
 
@@ -166,18 +163,8 @@ export default function RoomPage() {
     }
   };
 
-  const handleOrderChange = (newOrder: { playerId: string; playerName: string; submission: string }[]) => {
-    setOrderedPlayers(
-      newOrder.map((p, index) => ({
-        ...p,
-        position: index + 1,
-        numberGuess: orderedPlayers.find((op) => op.playerId === p.playerId)?.numberGuess || null,
-      }))
-    );
-  };
-
   const handleGuessChange = (playerId: string, numberGuess: number | null) => {
-    setOrderedPlayers((prev) =>
+    setPlayerGuesses((prev) =>
       prev.map((p) =>
         p.playerId === playerId ? { ...p, numberGuess } : p
       )
@@ -187,11 +174,24 @@ export default function RoomPage() {
   const handleSubmitGuesses = async () => {
     setIsSubmittingGuesses(true);
     try {
-      const guessesData = orderedPlayers.map((p) => ({
-        player_id: p.playerId,
-        position_guess: p.position,
-        number_guess: p.numberGuess,
-      }));
+      // Calculate positions based on number guesses
+      // Sort by guessed number (null guesses go to end), then assign positions
+      const sortedByGuess = [...playerGuesses].sort((a, b) => {
+        if (a.numberGuess === null && b.numberGuess === null) return 0;
+        if (a.numberGuess === null) return 1;
+        if (b.numberGuess === null) return -1;
+        return a.numberGuess - b.numberGuess;
+      });
+
+      const guessesData = playerGuesses.map((p) => {
+        // Find position based on where this player is in the sorted list
+        const position = sortedByGuess.findIndex(sp => sp.playerId === p.playerId) + 1;
+        return {
+          player_id: p.playerId,
+          position_guess: position,
+          number_guess: p.numberGuess,
+        };
+      });
 
       await submitGuesses(guessesData);
       
@@ -472,6 +472,7 @@ export default function RoomPage() {
                     onSubmit={handleSubmitItem}
                     isSubmitted={!!mySubmission}
                     submittedText={mySubmission?.text}
+                    roundId={currentRound.id}
                   />
                 </>
               )}
@@ -512,22 +513,12 @@ export default function RoomPage() {
 
               {/* Phase: Judging - Judge View */}
               {currentRound?.phase === "judging" && isJudge && allSubmitted && (
-                <>
-                  <JudgeOrderingBoard
-                    players={orderedPlayers.map((p) => ({
-                      playerId: p.playerId,
-                      playerName: p.playerName,
-                      submission: p.submission,
-                    }))}
-                    onOrderChange={handleOrderChange}
-                  />
-                  <JudgeNumberGuessInputs
-                    orderedPlayers={orderedPlayers}
-                    onGuessChange={handleGuessChange}
-                    onSubmit={handleSubmitGuesses}
-                    isSubmitting={isSubmittingGuesses}
-                  />
-                </>
+                <JudgeNumberGuessInputs
+                  orderedPlayers={playerGuesses}
+                  onGuessChange={handleGuessChange}
+                  onSubmit={handleSubmitGuesses}
+                  isSubmitting={isSubmittingGuesses}
+                />
               )}
 
               {/* Phase: Judging - Non-Judge View */}

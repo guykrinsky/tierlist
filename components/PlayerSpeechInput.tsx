@@ -14,6 +14,7 @@ interface PlayerSpeechInputProps {
   isSubmitted?: boolean;
   submittedText?: string;
   timerDuration?: number; // in seconds, default 60
+  roundId?: string; // Used to reset timer only when round changes
 }
 
 export function PlayerSpeechInput({
@@ -22,6 +23,7 @@ export function PlayerSpeechInput({
   isSubmitted = false,
   submittedText,
   timerDuration = 60, // 60 seconds default
+  roundId = "default",
 }: PlayerSpeechInputProps) {
   const [text, setText] = useState(submittedText || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,6 +85,7 @@ export function PlayerSpeechInput({
               duration={timerDuration} 
               onTimeUp={handleTimeUp}
               isActive={!isSubmitting}
+              resetKey={roundId}
             />
           </div>
 

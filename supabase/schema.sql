@@ -327,9 +327,13 @@ BEGIN
     FROM json_to_recordset(v_actual_positions) AS x(player_id UUID, value INTEGER, actual_position INTEGER)
     WHERE x.player_id = v_player.id;
 
-    -- Scoring: Only exact number guesses count!
-    -- Position guesses don't give points - they're just for ordering
-    -- If judge guesses the EXACT NUMBER correctly, BOTH player and judge get +1
+    -- Scoring:
+    -- 1. Position correct → Judge +1 (player gets nothing)
+    IF v_guess.position_guess = v_position THEN
+      v_judge_points := v_judge_points + 1;
+    END IF;
+
+    -- 2. Number correct → Both Judge +1 AND Player +1
     IF v_guess.number_guess IS NOT NULL AND v_guess.number_guess = v_secret.value THEN
       v_player_points := v_player_points + 1;
       v_judge_points := v_judge_points + 1;

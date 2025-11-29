@@ -365,19 +365,22 @@ export default function HomePage() {
               <h3 className="font-bold text-white mb-4">Scoring</h3>
               <div className="text-left space-y-2 text-sm">
                 <p className="text-muted-foreground">
-                  The Judge orders players and can guess their <span className="text-white">exact numbers</span>
+                  The Judge guesses each player's <span className="text-white">position</span> and <span className="text-white">exact number</span>
                 </p>
                 <p className="text-muted-foreground mt-3">
-                  <span className="text-yellow-500 font-medium">🎯 Exact Number Guess:</span>
-                </p>
-                <p className="text-muted-foreground pl-4">
-                  <span className="text-tierlist-blue font-medium">+1 point</span> to the Player
+                  <span className="text-tierlist-blue font-medium">📊 Position Correct:</span>
                 </p>
                 <p className="text-muted-foreground pl-4">
                   <span className="text-tierlist-red font-medium">+1 point</span> to the Judge
                 </p>
-                <p className="text-muted-foreground mt-3 text-xs">
-                  (Position ordering is just for fun - no points!)
+                <p className="text-muted-foreground mt-3">
+                  <span className="text-yellow-500 font-medium">🎯 Exact Number Correct:</span>
+                </p>
+                <p className="text-muted-foreground pl-4">
+                  <span className="text-tierlist-red font-medium">+1 point</span> to the Judge
+                </p>
+                <p className="text-muted-foreground pl-4">
+                  <span className="text-tierlist-blue font-medium">+1 point</span> to the Player
                 </p>
                 <p className="text-muted-foreground mt-3">
                   First to <span className="text-yellow-500 font-medium">10 points</span> wins!

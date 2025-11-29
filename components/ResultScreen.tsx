@@ -100,21 +100,33 @@ export function ResultScreen({
 
                 <div className="flex flex-col items-end gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      Position: {result.judgePositionGuess} {result.positionCorrect ? "✓" : `→ ${result.actualPosition}`}
-                    </span>
+                    {result.positionCorrect ? (
+                      <span className="text-sm text-green-400">
+                        Position ✓ (Judge +1)
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        Pos: {result.judgePositionGuess} → was {result.actualPosition}
+                      </span>
+                    )}
                   </div>
                   {result.judgeNumberGuess !== null ? (
                     <div className="flex items-center gap-2">
                       {result.numberCorrect ? (
-                        // Judge guessed exact number - both get points!
-                        <Star className="w-5 h-5 text-yellow-500" />
+                        <>
+                          <Star className="w-5 h-5 text-yellow-500" />
+                          <span className="text-sm text-yellow-500 font-medium">
+                            #{result.judgeNumberGuess} 🎯 EXACT!
+                          </span>
+                        </>
                       ) : (
-                        <XCircle className="w-5 h-5 text-muted-foreground" />
+                        <>
+                          <XCircle className="w-5 h-5 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
+                            #{result.judgeNumberGuess} ✗
+                          </span>
+                        </>
                       )}
-                      <span className={`text-sm ${result.numberCorrect ? "text-yellow-500 font-medium" : "text-muted-foreground"}`}>
-                        Guessed #{result.judgeNumberGuess} {result.numberCorrect ? "🎯 EXACT!" : "✗"}
-                      </span>
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">No number guess</span>

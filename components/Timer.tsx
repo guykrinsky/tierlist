@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
 
@@ -9,32 +9,41 @@ interface TimerProps {
   onTimeUp?: () => void;
   isActive?: boolean;
   showWarning?: boolean; // show warning color when time is low
+  resetKey?: string; // Only reset timer when this key changes
 }
 
 export function Timer({ 
   duration, 
   onTimeUp, 
   isActive = true,
-  showWarning = true 
+  showWarning = true,
+  resetKey = "default"
 }: TimerProps) {
   const [timeLeft, setTimeLeft] = useState(duration);
+  const lastResetKey = useRef(resetKey);
+  const onTimeUpRef = useRef(onTimeUp);
+  
+  // Update the ref when onTimeUp changes (prevents timer reset)
+  useEffect(() => {
+    onTimeUpRef.current = onTimeUp;
+  }, [onTimeUp]);
 
-  const resetTimer = useCallback(() => {
-    setTimeLeft(duration);
-  }, [duration]);
+  // Only reset when resetKey changes
+  useEffect(() => {
+    if (lastResetKey.current !== resetKey) {
+      setTimeLeft(duration);
+      lastResetKey.current = resetKey;
+    }
+  }, [resetKey, duration]);
 
   useEffect(() => {
-    resetTimer();
-  }, [duration, resetTimer]);
-
-  useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || timeLeft <= 0) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          onTimeUp?.();
+          onTimeUpRef.current?.();
           return 0;
         }
         return prev - 1;
@@ -42,7 +51,7 @@ export function Timer({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, onTimeUp]);
+  }, [isActive, timeLeft]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;

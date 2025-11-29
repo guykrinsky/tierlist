@@ -80,9 +80,13 @@ export function calculateRoundResults(
     let playerPointsEarned = 0;
     let judgePointsEarned = 0;
 
-    // Scoring: Only exact number guesses count!
-    // Position guesses don't give points - they're just for ordering
-    // If judge guesses the EXACT NUMBER correctly, BOTH get +1
+    // Scoring:
+    // 1. Position correct → Judge +1 (player gets nothing)
+    if (positionCorrect) {
+      judgePointsEarned += 1;
+    }
+
+    // 2. Number correct → Both Judge +1 AND Player +1
     if (numberCorrect) {
       playerPointsEarned += 1;
       judgePointsEarned += 1;
