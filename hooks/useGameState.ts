@@ -197,14 +197,14 @@ export function useGameState(roomId: string, playerId: string | null) {
         "postgres_changes",
         { event: "*", schema: "public", table: "submissions" },
         (payload) => {
-          // For submissions: only update count for judge view, don't refresh other players
+          // For submissions: update local state for live ordering
           if (payload.eventType === "INSERT") {
-            const newSubmission = payload.new as { player_id?: string };
+            const newSubmission = payload.new as Submission;
             // If this is MY submission, I already updated locally - skip
             if (newSubmission.player_id === playerId) {
               return;
             }
-            // For judge: increment count without full refresh
+            // Add new submission for live ordering view (both judge and players)
             setGameState(prev => {
               // Only add if not already present
               const exists = prev.submissions.some(s => 
@@ -213,10 +213,10 @@ export function useGameState(roomId: string, playerId: string | null) {
               if (exists) return prev;
               
               submissionCountRef.current = prev.submissions.length + 1;
-              // Just update submission count for UI, don't fetch full data
+              // Add full submission data for live ordering
               return {
                 ...prev,
-                submissions: [...prev.submissions, newSubmission as Submission]
+                submissions: [...prev.submissions, newSubmission]
               };
             });
           }

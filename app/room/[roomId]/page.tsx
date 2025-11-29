@@ -475,6 +475,21 @@ export default function RoomPage() {
                     submittedText={mySubmission?.text}
                     roundId={currentRound.id}
                   />
+                  
+                  {/* Show live ordering after player has submitted */}
+                  {mySubmission && submissions.length > 0 && (
+                    <div className="mt-4">
+                      <AutomaticOrderingView
+                        submissions={submissions}
+                        secrets={secrets}
+                        players={players}
+                        myPlayerId={currentPlayer?.id || ""}
+                        mySecret={mySecret}
+                        isLive={true}
+                        totalExpected={nonJudgePlayers.length}
+                      />
+                    </div>
+                  )}
                 </>
               )}
 

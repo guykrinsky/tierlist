@@ -191,7 +191,18 @@ DECLARE
   v_player RECORD;
   v_player_count INTEGER;
   v_current_round INTEGER;
+  v_numbers INTEGER[] := ARRAY[1,2,3,4,5,6,7,8,9,10];
+  v_shuffled INTEGER[];
+  v_index INTEGER := 1;
 BEGIN
+  -- Count non-judge players
+  SELECT COUNT(*) INTO v_player_count FROM players WHERE room_id = p_room_id;
+  
+  -- Check max 10 non-judge players (11 total with judge)
+  IF v_player_count > 11 THEN
+    RAISE EXCEPTION 'Too many players. Maximum 10 non-judge players allowed per round.';
+  END IF;
+
   -- Deactivate all previous rounds for this room
   UPDATE rounds SET is_active = false, phase = 'finished' WHERE room_id = p_room_id AND is_active = true;
 
@@ -222,10 +233,23 @@ BEGIN
   VALUES (p_room_id, v_judge_id, p_category, 'submitting')
   RETURNING id INTO v_round_id;
 
-  -- Assign random numbers to non-judge players
-  FOR v_player IN SELECT id FROM players WHERE room_id = p_room_id AND id != v_judge_id LOOP
+  -- Shuffle the numbers array using Fisher-Yates algorithm
+  v_shuffled := v_numbers;
+  FOR i IN REVERSE 10..2 LOOP
+    DECLARE
+      j INTEGER := floor(random() * i + 1)::int;
+      temp INTEGER := v_shuffled[i];
+    BEGIN
+      v_shuffled[i] := v_shuffled[j];
+      v_shuffled[j] := temp;
+    END;
+  END LOOP;
+
+  -- Assign UNIQUE random numbers to non-judge players from shuffled array
+  FOR v_player IN SELECT id FROM players WHERE room_id = p_room_id AND id != v_judge_id ORDER BY created_at LOOP
     INSERT INTO secrets (round_id, player_id, value)
-    VALUES (v_round_id, v_player.id, floor(random() * 10 + 1)::int);
+    VALUES (v_round_id, v_player.id, v_shuffled[v_index]);
+    v_index := v_index + 1;
   END LOOP;
 
   -- Get round data

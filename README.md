@@ -10,10 +10,11 @@ A multiplayer party game where players try to fool the judge by picking items th
 
 1. **Create or Join a Room** - One player creates a room and shares the code with friends
 2. **Judge Picks Category** - Each round, one player becomes the Judge and picks a category (e.g., "Foods That Slap at 3 AM")
-3. **Players Get Secret Numbers** - Non-judge players receive a random number from 1-10
+3. **Players Get Unique Numbers** - Non-judge players receive a unique number from 1-10 (no duplicates!)
 4. **Submit Your Item** - Pick something from the category that matches your number (1 = worst, 10 = best)
-5. **Judge Guesses** - The Judge orders players from lowest to highest and tries to guess their exact numbers
-6. **Score Points** - Players earn points by FOOLING the judge!
+5. **Watch Live Ordering** - As players submit, non-judges see the live sorted list update in real-time
+6. **Judge Guesses** - The Judge orders players from lowest to highest and tries to guess their exact numbers
+7. **Score Points** - Players earn points when judge guesses their number correctly!
 
 ## 🏆 Scoring
 
