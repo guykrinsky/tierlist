@@ -369,14 +369,14 @@ export default function RoomPage() {
       (p) => p.id !== currentRound.judge_id
     );
 
-    const { results, totalJudgePoints } = calculateRoundResults(
+    const { results, totalJudgePoints, allPositionsCorrect } = calculateRoundResults(
       nonJudgePlayersForResults,
       secrets,
       submissions,
       guesses
     );
 
-    return { results, totalJudgePoints };
+    return { results, totalJudgePoints, allPositionsCorrect };
   };
 
   return (
