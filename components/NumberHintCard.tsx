@@ -14,71 +14,58 @@ export function NumberHintCard({ number, category }: NumberHintCardProps) {
   const [isHidden, setIsHidden] = useState(false);
 
   const getHintText = (num: number): string => {
-    if (num <= 2) return "Very Low (Bottom tier)";
+    if (num <= 2) return "Bottom Tier";
     if (num <= 4) return "Low";
     if (num <= 6) return "Middle";
     if (num <= 8) return "High";
-    return "Very High (Top tier)";
+    return "Top Tier";
   };
 
-  const getGradient = (num: number): string => {
-    if (num <= 2) return "from-red-600 to-red-800";
-    if (num <= 4) return "from-orange-500 to-orange-700";
-    if (num <= 6) return "from-yellow-500 to-yellow-700";
-    if (num <= 8) return "from-green-500 to-green-700";
+  const getColor = (num: number): string => {
+    if (num <= 2) return "from-red-500 to-red-600";
+    if (num <= 4) return "from-orange-500 to-orange-600";
+    if (num <= 6) return "from-yellow-500 to-yellow-600";
+    if (num <= 8) return "from-green-500 to-green-600";
     return "from-tierlist-blue to-tierlist-blue-dark";
   };
 
   return (
     <motion.div
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", delay: 0.2 }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "spring" }}
     >
-      <Card className="relative overflow-hidden">
-        <div className={`absolute inset-0 bg-gradient-to-br ${getGradient(number)} opacity-20`} />
-        <div className="relative p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <span className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Your Secret Number
-            </span>
-            <button
-              onClick={() => setIsHidden(!isHidden)}
-              className="p-2 rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors"
-            >
-              {isHidden ? (
-                <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-              ) : (
-                <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-              )}
-            </button>
-          </div>
-
-          <div className="flex items-center justify-center mb-3 sm:mb-4">
-            <motion.div
-              className={`number-badge w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center ${
-                isHidden ? "bg-muted" : ""
-              }`}
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 400 }}
-            >
-              <span className="text-4xl sm:text-5xl font-black text-white">
-                {isHidden ? "?" : number}
-              </span>
-            </motion.div>
-          </div>
-
-          <div className="text-center space-y-1 sm:space-y-2">
-            <p className="text-base sm:text-lg font-semibold text-white">
-              {isHidden ? "Hidden" : getHintText(number)}
-            </p>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Pick a <span className="text-tierlist-blue font-medium">{category}</span> that matches!
-            </p>
-          </div>
+      <Card className="p-6 bg-card border-border text-center">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-white/50 text-sm uppercase tracking-wide">
+            Your Secret Number
+          </span>
+          <button
+            onClick={() => setIsHidden(!isHidden)}
+            className="p-2 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+          >
+            {isHidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
         </div>
+
+        <motion.div
+          className={`w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br ${
+            isHidden ? "from-gray-600 to-gray-700" : getColor(number)
+          } flex items-center justify-center shadow-lg mb-4`}
+          whileHover={{ scale: 1.05 }}
+        >
+          <span className="text-5xl font-black text-white">
+            {isHidden ? "?" : number}
+          </span>
+        </motion.div>
+
+        <p className="text-white font-semibold text-lg mb-1">
+          {isHidden ? "Hidden" : getHintText(number)}
+        </p>
+        <p className="text-white/50 text-sm">
+          Pick a <span className="text-tierlist-blue">{category}</span> that matches!
+        </p>
       </Card>
     </motion.div>
   );
 }
-
