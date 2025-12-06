@@ -49,19 +49,19 @@ export function CategorySelector({
 
   if (!isJudge) {
     return (
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <div className="text-center">
           <motion.div
             animate={{ rotate: [0, 10, -10, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            <Sparkles className="w-12 h-12 mx-auto text-yellow-500 mb-4" />
+            <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-yellow-500 mb-3 sm:mb-4" />
           </motion.div>
-          <h3 className="text-xl font-bold text-white mb-2">
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
             Category Selection
           </h3>
-          <p className="text-muted-foreground">
-            <span className="text-tierlist-blue font-medium">{judgeName}</span> is choosing a category...
+          <p className="text-sm sm:text-base text-muted-foreground">
+            <span className="text-tierlist-blue font-medium">{judgeName}</span> is choosing...
           </p>
         </div>
       </Card>
@@ -72,32 +72,32 @@ export function CategorySelector({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
     >
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-yellow-500" />
+        <CardHeader className="pb-2 sm:pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500" />
             Choose a Category
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-muted-foreground">
-              Pick one of these categories or use your Joker!
+        <CardContent className="space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Pick a category or use Joker!
             </p>
             <Button
               variant="ghost"
               size="sm"
               onClick={refreshCategories}
-              className="gap-2"
+              className="gap-1 sm:gap-2 h-8 px-2 sm:px-3"
             >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
+              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid gap-2 sm:gap-3">
             {categories.map((category, index) => (
               <motion.button
                 key={category}
@@ -108,13 +108,13 @@ export function CategorySelector({
                   setSelectedCategory(category);
                   setIsJoker(false);
                 }}
-                className={`p-4 rounded-lg border text-left transition-all ${
+                className={`p-3 sm:p-4 rounded-lg border text-left transition-all ${
                   selectedCategory === category && !isJoker
                     ? "border-tierlist-blue bg-tierlist-blue/20"
-                    : "border-border hover:border-tierlist-blue/50 hover:bg-muted/30"
+                    : "border-border hover:border-tierlist-blue/50 hover:bg-muted/30 active:bg-muted/50"
                 }`}
               >
-                <p className="font-medium text-white">{category}</p>
+                <p className="font-medium text-white text-sm sm:text-base">{category}</p>
               </motion.button>
             ))}
 
@@ -127,18 +127,18 @@ export function CategorySelector({
                 setIsJoker(true);
                 setSelectedCategory(null);
               }}
-              className={`p-4 rounded-lg border text-left transition-all ${
+              className={`p-3 sm:p-4 rounded-lg border text-left transition-all ${
                 isJoker
                   ? "border-yellow-500 bg-yellow-500/20"
-                  : "border-border hover:border-yellow-500/50 hover:bg-muted/30"
+                  : "border-border hover:border-yellow-500/50 hover:bg-muted/30 active:bg-muted/50"
               }`}
             >
-              <div className="flex items-center gap-3">
-                <Wand2 className="w-6 h-6 text-yellow-500" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Wand2 className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500 shrink-0" />
                 <div>
-                  <p className="font-bold text-yellow-500">JOKER</p>
-                  <p className="text-sm text-muted-foreground">
-                    Create your own category!
+                  <p className="font-bold text-yellow-500 text-sm sm:text-base">JOKER</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Create your own!
                   </p>
                 </div>
               </div>
@@ -155,7 +155,7 @@ export function CategorySelector({
                 placeholder="Enter your custom category..."
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
-                className="mt-4"
+                className="mt-3 sm:mt-4"
                 autoFocus
               />
             </motion.div>
@@ -168,18 +168,19 @@ export function CategorySelector({
               (!selectedCategory && !isJoker) ||
               (isJoker && !customCategory.trim())
             }
-            className="w-full mt-4"
+            className="w-full mt-3 sm:mt-4"
             size="lg"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Starting Round...
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
+                Starting...
               </>
             ) : (
               <>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Start Round with This Category
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                <span className="hidden sm:inline">Start Round with This Category</span>
+                <span className="sm:hidden">Start Round</span>
               </>
             )}
           </Button>

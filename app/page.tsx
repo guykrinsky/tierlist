@@ -178,7 +178,7 @@ export default function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="mt-6 text-xl text-muted-foreground"
+            className="mt-4 sm:mt-6 text-base sm:text-xl text-muted-foreground px-4"
           >
             The ultimate party game where you guess the rankings!
           </motion.p>
@@ -248,46 +248,95 @@ export default function HomePage() {
                       key={room.id}
                       initial={{ x: -10, opacity: 0 }}
                       animate={{ x: 0, opacity: 1 }}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                      className="p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <span className="font-mono font-bold text-tierlist-blue shrink-0">
-                          {room.id}
-                        </span>
+                      {/* Mobile: Stack layout */}
+                      <div className="flex flex-col gap-2 sm:hidden">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-bold text-tierlist-blue">
+                            {room.id}
+                          </span>
+                          <span className={`px-2 py-0.5 text-xs rounded-full ${
+                            room.status === "waiting"
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-yellow-500/20 text-yellow-400"
+                          }`}>
+                            {room.status === "waiting" ? "Waiting" : `Round ${room.current_round}`}
+                          </span>
+                        </div>
                         {room.name && (
-                          <span className="text-white font-medium truncate">
+                          <span className="text-white font-medium truncate text-sm">
                             {room.name}
                           </span>
                         )}
-                        <span className={`px-2 py-0.5 text-xs rounded-full shrink-0 ${
-                          room.status === "waiting"
-                            ? "bg-green-500/20 text-green-400"
-                            : "bg-yellow-500/20 text-yellow-400"
-                        }`}>
-                          {room.status === "waiting" ? "Waiting" : `Round ${room.current_round}`}
-                        </span>
-                        <span className="text-sm text-muted-foreground shrink-0">
-                          {room.player_count} player{room.player_count !== 1 ? "s" : ""}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            {room.player_count} player{room.player_count !== 1 ? "s" : ""}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setQuickJoinRoom(room)}
+                              disabled={room.status !== "waiting"}
+                              className="h-8 px-3"
+                            >
+                              {room.status === "waiting" ? "Join" : "Playing"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => deleteRoom(room.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8 w-8 p-0"
+                              title="Delete room"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setQuickJoinRoom(room)}
-                          disabled={room.status !== "waiting"}
-                        >
-                          {room.status === "waiting" ? "Join" : "In Progress"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteRoom(room.id)}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                          title="Delete room"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                      
+                      {/* Desktop: Row layout */}
+                      <div className="hidden sm:flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <span className="font-mono font-bold text-tierlist-blue shrink-0">
+                            {room.id}
+                          </span>
+                          {room.name && (
+                            <span className="text-white font-medium truncate">
+                              {room.name}
+                            </span>
+                          )}
+                          <span className={`px-2 py-0.5 text-xs rounded-full shrink-0 ${
+                            room.status === "waiting"
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-yellow-500/20 text-yellow-400"
+                          }`}>
+                            {room.status === "waiting" ? "Waiting" : `Round ${room.current_round}`}
+                          </span>
+                          <span className="text-sm text-muted-foreground shrink-0">
+                            {room.player_count} player{room.player_count !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setQuickJoinRoom(room)}
+                            disabled={room.status !== "waiting"}
+                          >
+                            {room.status === "waiting" ? "Join" : "In Progress"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => deleteRoom(room.id)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                            title="Delete room"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
@@ -303,57 +352,57 @@ export default function HomePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
-        className="py-16 px-4"
+        className="py-8 sm:py-16 px-4"
       >
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-white mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center text-white mb-8 sm:mb-12">
             How to Play
           </h2>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
             <Card className="glass">
-              <CardContent className="pt-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-tierlist-blue/20 flex items-center justify-center">
-                  <Gavel className="w-7 h-7 text-tierlist-blue" />
+              <CardContent className="p-4 sm:pt-6 text-center">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-4 rounded-xl sm:rounded-2xl bg-tierlist-blue/20 flex items-center justify-center">
+                  <Gavel className="w-5 h-5 sm:w-7 sm:h-7 text-tierlist-blue" />
                 </div>
-                <h3 className="font-bold text-white mb-2">1. Pick a Judge</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-bold text-white mb-1 sm:mb-2 text-sm sm:text-base">1. Pick a Judge</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                   One player becomes the Judge and receives a category card
                 </p>
               </CardContent>
             </Card>
 
             <Card className="glass">
-              <CardContent className="pt-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-tierlist-red/20 flex items-center justify-center">
-                  <Hash className="w-7 h-7 text-tierlist-red" />
+              <CardContent className="p-4 sm:pt-6 text-center">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-4 rounded-xl sm:rounded-2xl bg-tierlist-red/20 flex items-center justify-center">
+                  <Hash className="w-5 h-5 sm:w-7 sm:h-7 text-tierlist-red" />
                 </div>
-                <h3 className="font-bold text-white mb-2">2. Get Your Number</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-bold text-white mb-1 sm:mb-2 text-sm sm:text-base">2. Get Number</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                   Other players receive a secret number from 1-10
                 </p>
               </CardContent>
             </Card>
 
             <Card className="glass">
-              <CardContent className="pt-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
-                  <Sparkles className="w-7 h-7 text-yellow-500" />
+              <CardContent className="p-4 sm:pt-6 text-center">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-4 rounded-xl sm:rounded-2xl bg-yellow-500/20 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 sm:w-7 sm:h-7 text-yellow-500" />
                 </div>
-                <h3 className="font-bold text-white mb-2">3. Say Your Item</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-bold text-white mb-1 sm:mb-2 text-sm sm:text-base">3. Say Item</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                   Pick something from the category that matches your ranking
                 </p>
               </CardContent>
             </Card>
 
             <Card className="glass">
-              <CardContent className="pt-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-green-500/20 flex items-center justify-center">
-                  <Trophy className="w-7 h-7 text-green-500" />
+              <CardContent className="p-4 sm:pt-6 text-center">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-4 rounded-xl sm:rounded-2xl bg-green-500/20 flex items-center justify-center">
+                  <Trophy className="w-5 h-5 sm:w-7 sm:h-7 text-green-500" />
                 </div>
-                <h3 className="font-bold text-white mb-2">4. Judge Guesses</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-bold text-white mb-1 sm:mb-2 text-sm sm:text-base">4. Judge Guesses</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                   The Judge orders players and guesses their exact numbers
                 </p>
               </CardContent>

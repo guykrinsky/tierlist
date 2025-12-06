@@ -83,29 +83,29 @@ export function WaitingRoom({
 
         <Card className="border-tierlist-blue/50">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-lg text-muted-foreground">
+            <CardTitle className="text-base sm:text-lg text-muted-foreground">
               Room Code
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center gap-4">
-              <div className="text-4xl font-black tracking-[0.3em] text-tierlist-blue">
+          <CardContent className="px-3 sm:px-6">
+            <div className="flex items-center justify-center gap-2 sm:gap-4">
+              <div className="text-2xl sm:text-4xl font-black tracking-[0.2em] sm:tracking-[0.3em] text-tierlist-blue">
                 {room.id}
               </div>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={copyRoomCode}
-                className="shrink-0"
+                className="shrink-0 h-9 w-9 sm:h-10 sm:w-10"
               >
                 {copied ? (
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
                 ) : (
-                  <Copy className="w-5 h-5" />
+                  <Copy className="w-4 h-4 sm:w-5 sm:h-5" />
                 )}
               </Button>
             </div>
-            <p className="text-center text-sm text-muted-foreground mt-4">
+            <p className="text-center text-xs sm:text-sm text-muted-foreground mt-3 sm:mt-4">
               Share this code with friends to join!
             </p>
           </CardContent>

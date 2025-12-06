@@ -53,15 +53,15 @@ export function PlayerSpeechInput({
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
       >
-        <Card className="p-6 border-green-500/50 bg-green-500/10">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-6 h-6 text-green-500" />
-            <div>
-              <p className="text-sm text-muted-foreground">Your answer:</p>
-              <p className="text-xl font-bold text-white">{submittedText}</p>
+        <Card className="p-4 sm:p-6 border-green-500/50 bg-green-500/10">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-500 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-muted-foreground">Your answer:</p>
+              <p className="text-lg sm:text-xl font-bold text-white truncate">{submittedText}</p>
             </div>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-muted-foreground">
             Waiting for other players...
           </p>
         </Card>
@@ -75,11 +75,11 @@ export function PlayerSpeechInput({
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: 0.3 }}
     >
-      <Card className="p-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-muted-foreground">
-              Enter a <span className="text-tierlist-blue">{category}</span> that matches your number
+      <Card className="p-4 sm:p-6">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+              Enter a <span className="text-tierlist-blue">{category}</span>
             </label>
             <Timer 
               duration={timerDuration} 
@@ -89,12 +89,12 @@ export function PlayerSpeechInput({
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <Input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={`Enter your ${category.toLowerCase()}...`}
-              className="flex-1"
+              placeholder={`Your ${category.toLowerCase()}...`}
+              className="flex-1 h-10 sm:h-11 text-sm sm:text-base"
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               disabled={isSubmitting}
               autoFocus
@@ -102,18 +102,18 @@ export function PlayerSpeechInput({
             <Button
               onClick={handleSubmit}
               disabled={!text.trim() || isSubmitting}
-              className="px-6"
+              className="px-4 sm:px-6 h-10 sm:h-11"
             >
               {isSubmitting ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
               ) : (
-                <Send className="w-5 h-5" />
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
               )}
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            💡 Tip: Pick something that hints at your number without being too obvious!
+          <p className="text-[10px] sm:text-xs text-muted-foreground">
+            💡 Hint at your number without being too obvious!
           </p>
         </div>
       </Card>

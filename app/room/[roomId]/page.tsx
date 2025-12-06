@@ -383,35 +383,35 @@ export default function RoomPage() {
     <main className="min-h-screen pb-8">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Logo size="sm" animated={false} />
             {currentPlayer && (
-              <div className="hidden sm:block">
+              <div className="hidden md:block">
                 <span className="text-xs text-muted-foreground">Playing as</span>
                 <p className="text-sm font-bold text-white">{currentPlayer.name}</p>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-4">
-            {/* Show name on mobile */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Show name on mobile/tablet */}
             {currentPlayer && (
-              <span className="sm:hidden text-sm font-medium text-white">
+              <span className="md:hidden text-xs sm:text-sm font-medium text-white truncate max-w-[80px] sm:max-w-none">
                 {currentPlayer.name}
               </span>
             )}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="hidden sm:flex items-center gap-1 text-sm text-muted-foreground">
               <Users className="w-4 h-4" />
               <span>{players.length}</span>
             </div>
-            <div className="text-sm font-medium text-tierlist-blue">
+            <div className="text-xs sm:text-sm font-medium text-tierlist-blue truncate max-w-[60px] sm:max-w-none">
               {room.name || room.id}
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLeaveRoom}
-              className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+              className="text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8 w-8 p-0 sm:h-auto sm:w-auto sm:px-3"
             >
               <LogOut className="w-4 h-4" />
             </Button>

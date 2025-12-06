@@ -59,16 +59,16 @@ export function JudgeNumberGuessInputs({
     >
       {/* Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-tierlist-blue/20 border border-tierlist-blue/50">
-          <Target className="w-5 h-5 text-tierlist-blue" />
-          <span className="font-bold text-tierlist-blue">GUESS THE NUMBERS</span>
-          <Sparkles className="w-5 h-5 text-tierlist-blue" />
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-tierlist-blue/20 border border-tierlist-blue/50">
+          <Target className="w-4 h-4 sm:w-5 sm:h-5 text-tierlist-blue" />
+          <span className="font-bold text-tierlist-blue text-sm sm:text-base">GUESS THE NUMBERS</span>
+          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-tierlist-blue" />
         </div>
-        <h3 className="text-2xl font-bold text-white">
+        <h3 className="text-xl sm:text-2xl font-bold text-white">
           What number does each player have?
         </h3>
-        <p className="text-muted-foreground">
-          Guess right = <span className="text-yellow-400 font-semibold">+1 point for you</span> AND <span className="text-emerald-400 font-semibold">+1 for them!</span>
+        <p className="text-sm sm:text-base text-muted-foreground">
+          Guess right = <span className="text-yellow-400 font-semibold">+1 for you</span> & <span className="text-emerald-400 font-semibold">+1 for them!</span>
         </p>
       </div>
 
@@ -84,36 +84,36 @@ export function JudgeNumberGuessInputs({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <Card className="p-4 border-2 border-border hover:border-tierlist-blue/50 transition-colors">
+              <Card className="p-3 sm:p-4 border-2 border-border hover:border-tierlist-blue/50 transition-colors">
                 <div className="space-y-3">
                   {/* Player info row */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-tierlist-blue to-tierlist-blue-dark flex items-center justify-center shadow-lg">
-                      <span className="text-lg font-black text-white">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-tierlist-blue to-tierlist-blue-dark flex items-center justify-center shadow-lg shrink-0">
+                      <span className="text-sm sm:text-lg font-black text-white">
                         {index + 1}
                       </span>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-white">{player.playerName}</p>
-                      <p className="text-sm text-muted-foreground italic">
-                        "{player.submission}"
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-white text-sm sm:text-base truncate">{player.playerName}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground italic truncate">
+                        &quot;{player.submission}&quot;
                       </p>
                     </div>
                     {selectedNumber && (
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getColorForNumber(selectedNumber)} flex items-center justify-center shadow-lg`}
+                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${getColorForNumber(selectedNumber)} flex items-center justify-center shadow-lg shrink-0`}
                       >
-                        <span className="text-xl font-black text-white">
+                        <span className="text-lg sm:text-xl font-black text-white">
                           {selectedNumber}
                         </span>
                       </motion.div>
                     )}
                   </div>
 
-                  {/* Number selection grid */}
-                  <div className="grid grid-cols-10 gap-1.5">
+                  {/* Number selection grid - 5x2 on mobile, 10x1 on desktop */}
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 sm:gap-1.5">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
                       const isSelected = selectedNumber === num;
                       const colorClass = getColorForNumber(num);
@@ -121,14 +121,14 @@ export function JudgeNumberGuessInputs({
                       return (
                         <motion.button
                           key={num}
-                          whileHover={{ scale: 1.1 }}
+                          whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => handleNumberClick(player.playerId, num)}
                           className={`
-                            relative h-10 rounded-lg font-bold text-sm transition-all
+                            relative h-11 sm:h-10 rounded-lg font-bold text-base sm:text-sm transition-all
                             ${isSelected 
                               ? `bg-gradient-to-br ${colorClass} text-white shadow-lg ring-2 ring-white/50` 
-                              : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-white"
+                              : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-white active:bg-muted"
                             }
                           `}
                         >
