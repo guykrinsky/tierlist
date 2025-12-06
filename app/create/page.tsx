@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Logo } from "@/components/Logo";
+import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, Plus, User, Trophy, Home } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
@@ -69,91 +70,118 @@ export default function CreatePage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md space-y-6"
-      >
-        <div className="text-center">
-          <Logo size="lg" />
-        </div>
+    <div className="min-h-screen flex flex-col">
+      <Navigation />
+      <main className="flex-1 flex flex-col items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md space-y-6"
+        >
+          <div className="text-center">
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring" }}
+            >
+              <Logo size="lg" />
+            </motion.div>
+            <p className="mt-2 text-muted-foreground">Start a new game</p>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-tierlist-blue" />
-              Create a Room
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">Your Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name..."
-                maxLength={20}
-                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              />
-            </div>
+          <Card className="game-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="icon-container-blue w-8 h-8">
+                  <Plus className="w-4 h-4" />
+                </div>
+                Create a Room
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  Your Name
+                </Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name..."
+                  maxLength={20}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                  className="h-12"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="roomName">Room Name (optional)</Label>
-              <Input
-                id="roomName"
-                value={roomName}
-                onChange={(e) => setRoomName(e.target.value)}
-                placeholder="e.g. Friday Night Games"
-                maxLength={30}
-              />
-              <p className="text-xs text-muted-foreground">
-                Give your room a fun name so friends can find it!
-              </p>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="roomName" className="flex items-center gap-2">
+                  <Home className="w-4 h-4 text-muted-foreground" />
+                  Room Name <span className="text-muted-foreground text-xs">(optional)</span>
+                </Label>
+                <Input
+                  id="roomName"
+                  value={roomName}
+                  onChange={(e) => setRoomName(e.target.value)}
+                  placeholder="e.g. Friday Night Games"
+                  maxLength={30}
+                  className="h-12"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Give your room a fun name so friends can find it!
+                </p>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="winningScore">Winning Score</Label>
-              <Input
-                id="winningScore"
-                type="number"
-                value={winningScore}
-                onChange={(e) => setWinningScore(e.target.value)}
-                min={5}
-                max={50}
-              />
-              <p className="text-xs text-muted-foreground">
-                First player to reach this score wins (default: 10)
-              </p>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="winningScore" className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-muted-foreground" />
+                  Winning Score
+                </Label>
+                <Input
+                  id="winningScore"
+                  type="number"
+                  value={winningScore}
+                  onChange={(e) => setWinningScore(e.target.value)}
+                  min={5}
+                  max={50}
+                  className="h-12"
+                />
+                <p className="text-xs text-muted-foreground">
+                  First player to reach this score wins (default: 10)
+                </p>
+              </div>
 
-            <div className="flex gap-3">
-              <Link href="/" className="flex-1">
-                <Button variant="outline" className="w-full">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
+              <div className="flex gap-3 pt-2">
+                <Link href="/" className="flex-1">
+                  <Button variant="outline" className="w-full h-12">
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                </Link>
+                <Button
+                  onClick={handleCreate}
+                  disabled={isCreating || !name.trim()}
+                  className="flex-1 h-12 bg-tierlist-blue hover:bg-tierlist-blue-dark"
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Create Room
+                    </>
+                  )}
                 </Button>
-              </Link>
-              <Button
-                onClick={handleCreate}
-                disabled={isCreating || !name.trim()}
-                className="flex-1"
-              >
-                {isCreating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create Room"
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </main>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </main>
+    </div>
   );
 }
 

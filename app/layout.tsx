@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ClientProviders } from "@/components/ClientProviders";
 
-const outfit = Outfit({ 
+const inter = Inter({ 
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
   title: "TIERLIST - The Party Game",
-  description: "A multiplayer party game where you guess the rankings!",
+  description: "Real-time party game of ranking and intuition. Guess the numbers, outsmart your friends!",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -21,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${outfit.className} min-h-screen gradient-bg`}>
+      <body className={`${inter.className} min-h-screen gradient-bg branded-bg`}>
         <ClientProviders>
           {children}
         </ClientProviders>

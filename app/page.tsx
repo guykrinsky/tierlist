@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Navigation } from "@/components/Navigation";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,24 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Users, Sparkles, Trophy, Gavel, Hash, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { 
+  Plus, 
+  Users, 
+  Sparkles, 
+  Trophy, 
+  Gavel, 
+  Hash, 
+  Loader2, 
+  RefreshCw, 
+  Trash2,
+  Target,
+  Brain,
+  TrendingUp,
+  Zap,
+  Play,
+  ArrowRight,
+  ChevronDown
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -37,12 +55,12 @@ export default function HomePage() {
   const [quickJoinRoom, setQuickJoinRoom] = useState<ActiveRoom | null>(null);
   const [quickJoinName, setQuickJoinName] = useState("");
   const [isJoining, setIsJoining] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const supabase = createClient();
 
   const fetchActiveRooms = async () => {
     setIsLoadingRooms(true);
     try {
-      // Fetch rooms that are waiting or playing
       const { data: rooms, error } = await supabase
         .from("rooms")
         .select("id, name, host_id, status, current_round, created_at")
@@ -52,7 +70,6 @@ export default function HomePage() {
 
       if (error) throw error;
 
-      // Get player counts for each room
       const roomsWithCounts = await Promise.all(
         (rooms || []).map(async (room) => {
           const { count } = await supabase
@@ -113,7 +130,6 @@ export default function HomePage() {
 
       const result = data as { room: { id: string }; player: { id: string } };
 
-      // Save player data to localStorage
       const storageKey = `tierlist_player_${result.room.id}`;
       localStorage.setItem(
         storageKey,
@@ -142,7 +158,6 @@ export default function HomePage() {
   useEffect(() => {
     fetchActiveRooms();
 
-    // Subscribe to room changes
     const channel = supabase
       .channel("rooms-list")
       .on(
@@ -157,294 +172,444 @@ export default function HomePage() {
     };
   }, []);
 
+  const ruleSteps = [
+    {
+      icon: Gavel,
+      title: "Pick a Judge",
+      description: "One player becomes the Judge and announces a category",
+      color: "blue",
+    },
+    {
+      icon: Hash,
+      title: "Get Your Number",
+      description: "Each player receives a unique secret number from 1-10",
+      color: "red",
+    },
+    {
+      icon: Brain,
+      title: "Submit Your Answer",
+      description: "Pick something from the category that hints at your number",
+      color: "yellow",
+    },
+    {
+      icon: Target,
+      title: "Judge Guesses",
+      description: "The Judge tries to guess everyone's exact numbers",
+      color: "green",
+    },
+  ];
+
   return (
-    <main className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col">
+      <Navigation />
+      
       {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-tierlist-blue/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-tierlist-red/20 rounded-full blur-3xl" />
-        </div>
+      <main className="flex-1">
+        <section className="relative py-12 sm:py-20 px-4 overflow-hidden">
+          {/* Animated background elements */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <motion.div
+              animate={{ 
+                scale: [1, 1.2, 1],
+                opacity: [0.3, 0.5, 0.3],
+              }}
+              transition={{ duration: 8, repeat: Infinity }}
+              className="absolute top-20 left-10 w-72 h-72 bg-tierlist-blue/20 rounded-full blur-3xl"
+            />
+            <motion.div
+              animate={{ 
+                scale: [1.2, 1, 1.2],
+                opacity: [0.2, 0.4, 0.2],
+              }}
+              transition={{ duration: 10, repeat: Infinity }}
+              className="absolute bottom-20 right-10 w-96 h-96 bg-tierlist-red/15 rounded-full blur-3xl"
+            />
+          </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative z-10 text-center max-w-2xl mx-auto"
-        >
-          <Logo size="xl" />
-
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="mt-4 sm:mt-6 text-base sm:text-xl text-muted-foreground px-4"
-          >
-            The ultimate party game where you guess the rankings!
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-col sm:flex-row gap-4 mt-10 justify-center"
-          >
-            <Link href="/create">
-              <Button size="xl" className="w-full sm:w-auto gap-2">
-                <Plus className="w-6 h-6" />
-                Create Room
-              </Button>
-            </Link>
-            <Link href="/join">
-              <Button
-                size="xl"
-                variant="outline"
-                className="w-full sm:w-auto gap-2"
+          <div className="container mx-auto relative z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center max-w-3xl mx-auto"
+            >
+              <Logo size="xl" />
+              
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto"
               >
-                <Users className="w-6 h-6" />
-                Join Room
-              </Button>
-            </Link>
-          </motion.div>
-        </motion.div>
+                Real-time party game of ranking and intuition.
+                <br className="hidden sm:block" />
+                <span className="text-white font-medium">Guess the numbers, outsmart your friends!</span>
+              </motion.p>
 
-        {/* Active Rooms Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="relative z-10 w-full max-w-2xl mx-auto mt-12"
-        >
-          <Card className="glass">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Users className="w-5 h-5 text-tierlist-blue" />
-                  Active Rooms
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fetchActiveRooms}
-                  disabled={isLoadingRooms}
-                >
-                  <RefreshCw className={`w-4 h-4 ${isLoadingRooms ? "animate-spin" : ""}`} />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoadingRooms ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-tierlist-blue" />
-                </div>
-              ) : activeRooms.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  No active rooms. Create one to get started!
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {activeRooms.map((room) => (
+              {/* Animated demo preview */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5 }}
+                className="mt-8 flex justify-center"
+              >
+                <div className="flex gap-2 p-4 rounded-2xl bg-card/50 border border-border/50 backdrop-blur-sm">
+                  {[1, 4, 7, 10].map((num, i) => (
                     <motion.div
-                      key={room.id}
-                      initial={{ x: -10, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      className="p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                      key={num}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.7 + i * 0.1, type: "spring" }}
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl number-badge flex items-center justify-center"
                     >
-                      {/* Mobile: Stack layout */}
-                      <div className="flex flex-col gap-2 sm:hidden">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-bold text-tierlist-blue">
-                            {room.id}
-                          </span>
-                          <span className={`px-2 py-0.5 text-xs rounded-full ${
-                            room.status === "waiting"
-                              ? "bg-green-500/20 text-green-400"
-                              : "bg-yellow-500/20 text-yellow-400"
-                          }`}>
-                            {room.status === "waiting" ? "Waiting" : `Round ${room.current_round}`}
-                          </span>
-                        </div>
-                        {room.name && (
-                          <span className="text-white font-medium truncate text-sm">
-                            {room.name}
-                          </span>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">
-                            {room.player_count} player{room.player_count !== 1 ? "s" : ""}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setQuickJoinRoom(room)}
-                              disabled={room.status !== "waiting"}
-                              className="h-8 px-3"
-                            >
-                              {room.status === "waiting" ? "Join" : "Playing"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => deleteRoom(room.id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8 w-8 p-0"
-                              title="Delete room"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Desktop: Row layout */}
-                      <div className="hidden sm:flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <span className="font-mono font-bold text-tierlist-blue shrink-0">
-                            {room.id}
-                          </span>
-                          {room.name && (
-                            <span className="text-white font-medium truncate">
-                              {room.name}
-                            </span>
-                          )}
-                          <span className={`px-2 py-0.5 text-xs rounded-full shrink-0 ${
-                            room.status === "waiting"
-                              ? "bg-green-500/20 text-green-400"
-                              : "bg-yellow-500/20 text-yellow-400"
-                          }`}>
-                            {room.status === "waiting" ? "Waiting" : `Round ${room.current_round}`}
-                          </span>
-                          <span className="text-sm text-muted-foreground shrink-0">
-                            {room.player_count} player{room.player_count !== 1 ? "s" : ""}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setQuickJoinRoom(room)}
-                            disabled={room.status !== "waiting"}
-                          >
-                            {room.status === "waiting" ? "Join" : "In Progress"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteRoom(room.id)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                            title="Delete room"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
+                      <span className="text-xl sm:text-2xl font-black text-white">{num}</span>
                     </motion.div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+              </motion.div>
 
-      {/* How to Play Section */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.7 }}
-        className="py-8 sm:py-16 px-4"
-      >
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center text-white mb-8 sm:mb-12">
-            How to Play
-          </h2>
+              {/* CTA Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="flex flex-col sm:flex-row gap-4 mt-10 justify-center"
+              >
+                <Link href="/create">
+                  <Button size="lg" className="w-full sm:w-auto gap-2 h-14 px-8 text-lg bg-tierlist-blue hover:bg-tierlist-blue-dark">
+                    <Play className="w-5 h-5" />
+                    Start New Game
+                  </Button>
+                </Link>
+                <Link href="/join">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full sm:w-auto gap-2 h-14 px-8 text-lg border-2"
+                  >
+                    <Users className="w-5 h-5" />
+                    Join Existing Game
+                  </Button>
+                </Link>
+              </motion.div>
 
-          <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
-            <Card className="glass">
-              <CardContent className="p-4 sm:pt-6 text-center">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-4 rounded-xl sm:rounded-2xl bg-tierlist-blue/20 flex items-center justify-center">
-                  <Gavel className="w-5 h-5 sm:w-7 sm:h-7 text-tierlist-blue" />
-                </div>
-                <h3 className="font-bold text-white mb-1 sm:mb-2 text-sm sm:text-base">1. Pick a Judge</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                  One player becomes the Judge and receives a category card
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="glass">
-              <CardContent className="p-4 sm:pt-6 text-center">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-4 rounded-xl sm:rounded-2xl bg-tierlist-red/20 flex items-center justify-center">
-                  <Hash className="w-5 h-5 sm:w-7 sm:h-7 text-tierlist-red" />
-                </div>
-                <h3 className="font-bold text-white mb-1 sm:mb-2 text-sm sm:text-base">2. Get Number</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                  Other players receive a secret number from 1-10
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="glass">
-              <CardContent className="p-4 sm:pt-6 text-center">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-4 rounded-xl sm:rounded-2xl bg-yellow-500/20 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 sm:w-7 sm:h-7 text-yellow-500" />
-                </div>
-                <h3 className="font-bold text-white mb-1 sm:mb-2 text-sm sm:text-base">3. Say Item</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                  Pick something from the category that matches your ranking
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="glass">
-              <CardContent className="p-4 sm:pt-6 text-center">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-4 rounded-xl sm:rounded-2xl bg-green-500/20 flex items-center justify-center">
-                  <Trophy className="w-5 h-5 sm:w-7 sm:h-7 text-green-500" />
-                </div>
-                <h3 className="font-bold text-white mb-1 sm:mb-2 text-sm sm:text-base">4. Judge Guesses</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                  The Judge orders players and guesses their exact numbers
-                </p>
-              </CardContent>
-            </Card>
+              {/* Scroll indicator */}
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+                onClick={() => setShowRules(true)}
+                className="mt-12 flex flex-col items-center gap-2 text-muted-foreground hover:text-white transition-colors mx-auto"
+              >
+                <span className="text-sm">Learn how to play</span>
+                <motion.div
+                  animate={{ y: [0, 5, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </motion.div>
+              </motion.button>
+            </motion.div>
           </div>
+        </section>
 
-          <div className="mt-12 text-center">
-            <Card className="inline-block glass p-6">
-              <h3 className="font-bold text-white mb-4">Scoring</h3>
-              <div className="text-left space-y-2 text-sm">
-                <p className="text-muted-foreground">
-                  The Judge guesses each player's <span className="text-white">position</span> and <span className="text-white">exact number</span>
-                </p>
-                <p className="text-muted-foreground mt-3">
-                  <span className="text-tierlist-blue font-medium">🏆 Perfect Ordering:</span>
-                </p>
-                <p className="text-muted-foreground pl-4">
-                  All positions correct → <span className="text-tierlist-red font-medium">+1 point</span> to the Judge
-                </p>
-                <p className="text-muted-foreground mt-3">
-                  <span className="text-yellow-500 font-medium">🎯 Exact Number Correct:</span>
-                </p>
-                <p className="text-muted-foreground pl-4">
-                  <span className="text-tierlist-red font-medium">+1 point</span> to the Judge AND <span className="text-tierlist-blue font-medium">+1 point</span> to the Player
-                </p>
-                <p className="text-muted-foreground mt-3">
-                  First to <span className="text-yellow-500 font-medium">10 points</span> wins!
-                </p>
-              </div>
-            </Card>
+        {/* Active Rooms Section */}
+        <section className="py-8 px-4">
+          <div className="container mx-auto max-w-2xl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <Card className="game-card">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <div className="icon-container-blue w-8 h-8">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      Active Rooms
+                    </CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={fetchActiveRooms}
+                      disabled={isLoadingRooms}
+                      className="gap-2"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isLoadingRooms ? "animate-spin" : ""}`} />
+                      <span className="hidden sm:inline">Refresh</span>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingRooms ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-tierlist-blue" />
+                    </div>
+                  ) : activeRooms.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="icon-container-blue w-12 h-12 mx-auto mb-3">
+                        <Sparkles className="w-6 h-6" />
+                      </div>
+                      <p className="text-muted-foreground">No active rooms</p>
+                      <p className="text-sm text-muted-foreground mt-1">Create one to get started!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {activeRooms.map((room, index) => (
+                        <motion.div
+                          key={room.id}
+                          initial={{ x: -10, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-all border border-transparent hover:border-tierlist-blue/20"
+                        >
+                          {/* Mobile layout */}
+                          <div className="flex flex-col gap-2 sm:hidden">
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono font-bold text-tierlist-blue">
+                                {room.id}
+                              </span>
+                              <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                                room.status === "waiting"
+                                  ? "bg-green-500/20 text-green-400"
+                                  : "bg-yellow-500/20 text-yellow-400"
+                              }`}>
+                                {room.status === "waiting" ? "Waiting" : `Round ${room.current_round}`}
+                              </span>
+                            </div>
+                            {room.name && (
+                              <span className="text-white font-medium truncate text-sm">
+                                {room.name}
+                              </span>
+                            )}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Users className="w-4 h-4" />
+                                <span>{room.player_count}/10</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => setQuickJoinRoom(room)}
+                                  disabled={room.status !== "waiting"}
+                                  className="h-8 px-4 bg-tierlist-blue hover:bg-tierlist-blue-dark"
+                                >
+                                  {room.status === "waiting" ? "Join" : "Playing"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => deleteRoom(room.id)}
+                                  className="text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8 w-8 p-0"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Desktop layout */}
+                          <div className="hidden sm:flex items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <span className="font-mono font-bold text-tierlist-blue shrink-0">
+                                {room.id}
+                              </span>
+                              {room.name && (
+                                <span className="text-white font-medium truncate">
+                                  {room.name}
+                                </span>
+                              )}
+                              <span className={`px-2 py-0.5 text-xs rounded-full font-medium shrink-0 ${
+                                room.status === "waiting"
+                                  ? "bg-green-500/20 text-green-400"
+                                  : "bg-yellow-500/20 text-yellow-400"
+                              }`}>
+                                {room.status === "waiting" ? "Waiting" : `Round ${room.current_round}`}
+                              </span>
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground shrink-0">
+                                <Users className="w-4 h-4" />
+                                <span>{room.player_count}/10</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                size="sm"
+                                onClick={() => setQuickJoinRoom(room)}
+                                disabled={room.status !== "waiting"}
+                                className="bg-tierlist-blue hover:bg-tierlist-blue-dark"
+                              >
+                                {room.status === "waiting" ? "Join" : "In Progress"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteRoom(room.id)}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
+        </section>
+
+        {/* How to Play Section */}
+        <section className="py-12 sm:py-16 px-4">
+          <div className="container mx-auto max-w-5xl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-10"
+            >
+              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+                How to Play
+              </h2>
+              <p className="text-muted-foreground">
+                Master the game in 4 simple steps
+              </p>
+            </motion.div>
+
+            <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
+              {ruleSteps.map((step, index) => {
+                const Icon = step.icon;
+                const colorClasses = {
+                  blue: "icon-container-blue",
+                  red: "icon-container-red",
+                  yellow: "icon-container-yellow",
+                  green: "icon-container-green",
+                };
+                return (
+                  <motion.div
+                    key={step.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Card className="game-card h-full">
+                      <CardContent className="p-4 sm:p-6 text-center">
+                        <div className={`${colorClasses[step.color as keyof typeof colorClasses]} w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-3 sm:mb-4`}>
+                          <Icon className="w-6 h-6 sm:w-7 sm:h-7" />
+                        </div>
+                        <div className="text-xs sm:text-sm font-bold text-tierlist-blue mb-1">
+                          Step {index + 1}
+                        </div>
+                        <h3 className="font-bold text-white mb-2 text-sm sm:text-base">
+                          {step.title}
+                        </h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          {step.description}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Scoring Info */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mt-10"
+            >
+              <Card className="game-card-blue">
+                <CardContent className="p-6 sm:p-8">
+                  <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-center">
+                    <div className="flex-shrink-0">
+                      <div className="icon-container-yellow w-16 h-16">
+                        <Trophy className="w-8 h-8" />
+                      </div>
+                    </div>
+                    <div className="flex-1 text-center lg:text-left">
+                      <h3 className="text-xl font-bold text-white mb-4">Scoring System</h3>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-tierlist-blue/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <TrendingUp className="w-4 h-4 text-tierlist-blue" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-medium text-white text-sm">Perfect Ordering</p>
+                            <p className="text-xs text-muted-foreground">Judge gets +1 if all positions correct</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-tierlist-red/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <Target className="w-4 h-4 text-tierlist-red" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-medium text-white text-sm">Exact Number Guess</p>
+                            <p className="text-xs text-muted-foreground">+1 for Judge AND +1 for Player</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-border/50">
+                        <p className="text-sm text-muted-foreground">
+                          First to <span className="text-yellow-500 font-bold">10 points</span> wins the game!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="py-12 px-4">
+          <div className="container mx-auto max-w-2xl text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-2xl font-bold text-white mb-4">
+                Ready to Play?
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Gather 3-10 players and start guessing!
+              </p>
+              <Link href="/create">
+                <Button size="lg" className="gap-2 bg-tierlist-blue hover:bg-tierlist-blue-dark">
+                  Create Your Room
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </Link>
+            </motion.div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-6 px-4 border-t border-border/50">
+        <div className="container mx-auto text-center text-sm text-muted-foreground">
+          <Logo size="sm" animated={false} />
+          <p className="mt-2">A real-time party game of ranking and intuition</p>
         </div>
-      </motion.section>
+      </footer>
 
       {/* Quick Join Dialog */}
       <Dialog open={!!quickJoinRoom} onOpenChange={(open) => !open && setQuickJoinRoom(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Join Room</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-tierlist-blue" />
+              Join Room
+            </DialogTitle>
             <DialogDescription>
               {quickJoinRoom?.name ? (
-                <>Joining <span className="text-white font-medium">{quickJoinRoom.name}</span> ({quickJoinRoom.id})</>
+                <>Joining <span className="text-white font-medium">{quickJoinRoom.name}</span></>
               ) : (
                 <>Joining room <span className="text-tierlist-blue font-mono">{quickJoinRoom?.id}</span></>
               )}
@@ -461,6 +626,7 @@ export default function HomePage() {
                 maxLength={20}
                 onKeyDown={(e) => e.key === "Enter" && handleQuickJoin()}
                 autoFocus
+                className="h-12"
               />
             </div>
             <div className="flex gap-3">
@@ -474,7 +640,7 @@ export default function HomePage() {
               <Button
                 onClick={handleQuickJoin}
                 disabled={isJoining || !quickJoinName.trim()}
-                className="flex-1"
+                className="flex-1 bg-tierlist-blue hover:bg-tierlist-blue-dark"
               >
                 {isJoining ? (
                   <>
@@ -489,7 +655,6 @@ export default function HomePage() {
           </div>
         </DialogContent>
       </Dialog>
-    </main>
+    </div>
   );
 }
-

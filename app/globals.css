@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 @layer base {
   :root {
     --background: 222 47% 11%;
@@ -16,7 +18,7 @@
     --primary: 217 91% 60%;
     --primary-foreground: 222 47% 11%;
 
-    --secondary: 0 72% 51%;
+    --secondary: 0 84% 60%;
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217 33% 25%;
@@ -25,7 +27,7 @@
     --accent: 217 91% 60%;
     --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 217 33% 25%;
@@ -40,8 +42,12 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -93,13 +99,13 @@
 
 /* Glow effects */
 .glow-blue {
-  box-shadow: 0 0 20px rgba(37, 99, 235, 0.4),
-              0 0 40px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4),
+              0 0 40px rgba(59, 130, 246, 0.2);
 }
 
 .glow-red {
-  box-shadow: 0 0 20px rgba(220, 38, 38, 0.4),
-              0 0 40px rgba(220, 38, 38, 0.2);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4),
+              0 0 40px rgba(239, 68, 68, 0.2);
 }
 
 /* Animation utilities */
@@ -114,8 +120,8 @@
 
 /* Number badge styling */
 .number-badge {
-  background: linear-gradient(145deg, #2563eb, #1d4ed8);
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+  background: linear-gradient(145deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
 }
 
 /* Drag and drop styling */
@@ -128,5 +134,109 @@
 .drag-over {
   border-color: hsl(var(--primary));
   background: hsl(var(--primary) / 0.1);
+}
+
+/* Enhanced card styles */
+.game-card {
+  @apply relative overflow-hidden rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm;
+  @apply transition-all duration-300 ease-out;
+  @apply hover:border-tierlist-blue/30 hover:shadow-lg hover:shadow-tierlist-blue/10;
+}
+
+.game-card-blue {
+  @apply game-card border-tierlist-blue/30 bg-tierlist-blue/5;
+}
+
+.game-card-red {
+  @apply game-card border-tierlist-red/30 bg-tierlist-red/5;
+}
+
+/* Score animation */
+.score-bubble {
+  @apply absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold;
+  @apply bg-yellow-500 text-yellow-900;
+  animation: score-pop 0.8s ease-out forwards;
+}
+
+@keyframes score-pop {
+  0% { transform: scale(0) translateY(0); opacity: 0; }
+  50% { transform: scale(1.2) translateY(-10px); opacity: 1; }
+  100% { transform: scale(1) translateY(-20px); opacity: 0; }
+}
+
+/* Progress bar */
+.progress-bar {
+  @apply h-2 rounded-full bg-muted overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply h-full rounded-full bg-gradient-to-r from-tierlist-blue to-tierlist-blue-light;
+  @apply transition-all duration-500 ease-out;
+}
+
+/* Shimmer effect for loading */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Player status indicators */
+.status-dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+.status-dot.online { @apply bg-green-500 shadow-lg shadow-green-500/50; }
+.status-dot.waiting { @apply bg-yellow-500 shadow-lg shadow-yellow-500/50 animate-pulse; }
+.status-dot.submitted { @apply bg-tierlist-blue shadow-lg shadow-tierlist-blue/50; }
+
+/* Branded background pattern */
+.branded-bg {
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(239, 68, 68, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+}
+
+/* Phase transition animation */
+.phase-enter {
+  animation: phase-enter 0.5s ease-out;
+}
+
+@keyframes phase-enter {
+  0% { opacity: 0; transform: translateY(20px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Icon container styling */
+.icon-container {
+  @apply flex items-center justify-center rounded-xl;
+  @apply transition-all duration-200;
+}
+
+.icon-container-blue {
+  @apply icon-container bg-tierlist-blue/20 text-tierlist-blue;
+}
+
+.icon-container-red {
+  @apply icon-container bg-tierlist-red/20 text-tierlist-red;
+}
+
+.icon-container-yellow {
+  @apply icon-container bg-yellow-500/20 text-yellow-500;
+}
+
+.icon-container-green {
+  @apply icon-container bg-green-500/20 text-green-500;
 }
 

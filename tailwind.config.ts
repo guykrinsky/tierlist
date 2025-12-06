@@ -51,10 +51,12 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
         tierlist: {
-          blue: "#2563eb",
-          "blue-dark": "#1d4ed8",
-          red: "#dc2626",
-          "red-dark": "#b91c1c",
+          blue: "#3b82f6",
+          "blue-dark": "#2563eb",
+          "blue-light": "#60a5fa",
+          red: "#ef4444",
+          "red-dark": "#dc2626",
+          "red-light": "#f87171",
         },
       },
       borderRadius: {
@@ -72,16 +74,38 @@ const config: Config = {
           to: { height: "0" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 20px rgba(37, 99, 235, 0.5)" },
-          "50%": { boxShadow: "0 0 40px rgba(37, 99, 235, 0.8)" },
+          "0%, 100%": { boxShadow: "0 0 20px rgba(59, 130, 246, 0.5)" },
+          "50%": { boxShadow: "0 0 40px rgba(59, 130, 246, 0.8)" },
         },
         "slide-up": {
           from: { transform: "translateY(20px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
         },
+        "slide-down": {
+          from: { transform: "translateY(-20px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+        "slide-in-right": {
+          from: { transform: "translateX(20px)", opacity: "0" },
+          to: { transform: "translateX(0)", opacity: "1" },
+        },
         "scale-in": {
           from: { transform: "scale(0.95)", opacity: "0" },
           to: { transform: "scale(1)", opacity: "1" },
+        },
+        "score-pop": {
+          "0%": { transform: "scale(0) translateY(0)", opacity: "0" },
+          "50%": { transform: "scale(1.2) translateY(-10px)", opacity: "1" },
+          "100%": { transform: "scale(1) translateY(-20px)", opacity: "0" },
+        },
+        "bounce-in": {
+          "0%": { transform: "scale(0)", opacity: "0" },
+          "50%": { transform: "scale(1.1)" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
         },
       },
       animation: {
@@ -89,7 +113,12 @@ const config: Config = {
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "slide-up": "slide-up 0.3s ease-out",
+        "slide-down": "slide-down 0.3s ease-out",
+        "slide-in-right": "slide-in-right 0.3s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
+        "score-pop": "score-pop 0.8s ease-out forwards",
+        "bounce-in": "bounce-in 0.4s ease-out",
+        "shimmer": "shimmer 2s linear infinite",
       },
     },
   },

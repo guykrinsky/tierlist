@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Logo } from "@/components/Logo";
+import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Loader2, Users } from "lucide-react";
+import { ArrowLeft, Loader2, Users, Hash, User, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
@@ -93,74 +94,99 @@ export default function JoinPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md space-y-6"
-      >
-        <div className="text-center">
-          <Logo size="lg" />
-        </div>
+    <div className="min-h-screen flex flex-col">
+      <Navigation />
+      <main className="flex-1 flex flex-col items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md space-y-6"
+        >
+          <div className="text-center">
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring" }}
+            >
+              <Logo size="lg" />
+            </motion.div>
+            <p className="mt-2 text-muted-foreground">Join an existing game</p>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-tierlist-blue" />
-              Join a Room
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="roomCode">Room Code</Label>
-              <Input
-                id="roomCode"
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                placeholder="Enter room code..."
-                maxLength={6}
-                className="text-center text-2xl tracking-[0.3em] font-bold uppercase"
-              />
-            </div>
+          <Card className="game-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="icon-container-blue w-8 h-8">
+                  <Users className="w-4 h-4" />
+                </div>
+                Join a Room
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="roomCode" className="flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-muted-foreground" />
+                  Room Code
+                </Label>
+                <Input
+                  id="roomCode"
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                  placeholder="XXXXXX"
+                  maxLength={6}
+                  className="text-center text-2xl tracking-[0.2em] font-bold uppercase h-14 bg-muted/30 border-tierlist-blue/30 focus:border-tierlist-blue"
+                />
+                <p className="text-xs text-muted-foreground text-center">
+                  Ask the host for the 6-letter room code
+                </p>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Your Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name..."
-                maxLength={20}
-                onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="name" className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  Your Name
+                </Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name..."
+                  maxLength={20}
+                  onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                  className="h-12"
+                />
+              </div>
 
-            <div className="flex gap-3">
-              <Link href="/" className="flex-1">
-                <Button variant="outline" className="w-full">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
+              <div className="flex gap-3 pt-2">
+                <Link href="/" className="flex-1">
+                  <Button variant="outline" className="w-full h-12">
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                </Link>
+                <Button
+                  onClick={handleJoin}
+                  disabled={isJoining || !name.trim() || !roomCode.trim()}
+                  className="flex-1 h-12 bg-tierlist-blue hover:bg-tierlist-blue-dark"
+                >
+                  {isJoining ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Joining...
+                    </>
+                  ) : (
+                    <>
+                      Join Room
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
                 </Button>
-              </Link>
-              <Button
-                onClick={handleJoin}
-                disabled={isJoining || !name.trim() || !roomCode.trim()}
-                className="flex-1"
-              >
-                {isJoining ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Joining...
-                  </>
-                ) : (
-                  "Join Room"
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </main>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </main>
+    </div>
   );
 }
 

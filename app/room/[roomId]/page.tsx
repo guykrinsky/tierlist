@@ -439,19 +439,33 @@ export default function RoomPage() {
               {/* Judge Banner */}
               {currentRound && (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
                 >
-                  <Card className="p-4 border-tierlist-blue/50 bg-tierlist-blue/10">
-                    <div className="flex items-center gap-3">
-                      <Gavel className="w-6 h-6 text-tierlist-blue" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          Current Judge
-                        </p>
-                        <p className="font-bold text-white">
-                          {judge?.name}
-                          {isJudge && " (You)"}
+                  <Card className={`game-card p-4 ${isJudge ? "game-card-blue" : ""}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`icon-container w-10 h-10 ${isJudge ? "icon-container-yellow" : "icon-container-blue"}`}>
+                          <Gavel className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                            Current Judge
+                          </p>
+                          <p className="font-bold text-white">
+                            {judge?.name}
+                            {isJudge && (
+                              <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500">
+                                YOU
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Phase</p>
+                        <p className="text-sm font-medium text-tierlist-blue capitalize">
+                          {currentRound.phase}
                         </p>
                       </div>
                     </div>
@@ -495,36 +509,80 @@ export default function RoomPage() {
 
               {/* Phase: Submitting - Judge View */}
               {currentRound?.phase === "submitting" && isJudge && (
-                <Card className="p-6">
-                  <div className="text-center">
-                    <Clock className="w-12 h-12 mx-auto text-tierlist-blue mb-4" />
-                    <h3 className="text-xl font-bold text-white mb-2">
-                      Waiting for Players
-                    </h3>
-                    <p className="text-muted-foreground mb-4">
-                      {submissions.length}/{nonJudgePlayers.length} players have submitted
-                    </p>
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      {nonJudgePlayers.map((player) => {
-                        const hasSubmitted = submissions.some(
-                          (s) => s.player_id === player.id
-                        );
-                        return (
-                          <span
-                            key={player.id}
-                            className={`px-3 py-1 rounded-full text-sm ${
-                              hasSubmitted
-                                ? "bg-green-500/20 text-green-400"
-                                : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {player.name}
-                          </span>
-                        );
-                      })}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="phase-enter"
+                >
+                  <Card className="game-card p-6">
+                    <div className="text-center">
+                      <motion.div
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="icon-container-blue w-16 h-16 mx-auto mb-4"
+                      >
+                        <Clock className="w-8 h-8" />
+                      </motion.div>
+                      <h3 className="text-xl font-bold text-white mb-2">
+                        Waiting for Players
+                      </h3>
+                      
+                      {/* Progress bar */}
+                      <div className="max-w-xs mx-auto mb-4">
+                        <div className="progress-bar">
+                          <motion.div
+                            className="progress-bar-fill"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(submissions.length / nonJudgePlayers.length) * 100}%` }}
+                            transition={{ duration: 0.5 }}
+                          />
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          <span className="text-tierlist-blue font-bold">{submissions.length}</span>
+                          <span className="mx-1">/</span>
+                          <span>{nonJudgePlayers.length}</span>
+                          <span className="ml-1">players submitted</span>
+                        </p>
+                      </div>
+                      
+                      {/* Player status grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-md mx-auto">
+                        {nonJudgePlayers.map((player, index) => {
+                          const hasSubmitted = submissions.some(
+                            (s) => s.player_id === player.id
+                          );
+                          return (
+                            <motion.div
+                              key={player.id}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: index * 0.05 }}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                                hasSubmitted
+                                  ? "bg-green-500/20 border border-green-500/30"
+                                  : "bg-muted/30 border border-transparent"
+                              }`}
+                            >
+                              <div className={`status-dot ${hasSubmitted ? "submitted" : "waiting"}`} />
+                              <span className={hasSubmitted ? "text-green-400" : "text-muted-foreground"}>
+                                {player.name}
+                              </span>
+                              {hasSubmitted && (
+                                <motion.span
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="ml-auto text-green-400"
+                                >
+                                  ✓
+                                </motion.span>
+                              )}
+                            </motion.div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+                </motion.div>
               )}
 
               {/* Phase: Judging - Judge View */}
@@ -539,19 +597,40 @@ export default function RoomPage() {
 
               {/* Phase: Judging - Non-Judge View: Show automatic ordering */}
               {currentRound?.phase === "judging" && !isJudge && (
-                <div className="space-y-4">
-                  <Card className="p-4 bg-tierlist-blue/10 border-tierlist-blue/30">
-                    <div className="flex items-center gap-3">
-                      <motion.div
-                        animate={{ rotate: [0, 10, -10, 0] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
-                        <Gavel className="w-8 h-8 text-tierlist-blue" />
-                      </motion.div>
-                      <div>
-                        <h3 className="font-bold text-white">Judge is Deliberating</h3>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4 phase-enter"
+                >
+                  <Card className="game-card-blue p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <motion.div
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          className="icon-container-blue w-12 h-12"
+                        >
+                          <Gavel className="w-6 h-6" />
+                        </motion.div>
+                        <motion.div
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                          className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                          Judge is Deliberating
+                          <motion.span
+                            animate={{ opacity: [1, 0.3, 1] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                            className="text-tierlist-blue"
+                          >
+                            ...
+                          </motion.span>
+                        </h3>
                         <p className="text-sm text-muted-foreground">
-                          {judge?.name} is guessing everyone&apos;s numbers...
+                          <span className="text-tierlist-blue font-medium">{judge?.name}</span> is guessing everyone&apos;s numbers
                         </p>
                       </div>
                     </div>
@@ -565,7 +644,7 @@ export default function RoomPage() {
                     myPlayerId={currentPlayer?.id || ""}
                     mySecret={mySecret}
                   />
-                </div>
+                </motion.div>
               )}
 
               {/* Phase: Results */}
