@@ -83,6 +83,13 @@ ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE guesses ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies (Allow all for now - in production, you'd want more restrictive policies)
+DROP POLICY IF EXISTS "Allow all on rooms" ON rooms;
+DROP POLICY IF EXISTS "Allow all on players" ON players;
+DROP POLICY IF EXISTS "Allow all on rounds" ON rounds;
+DROP POLICY IF EXISTS "Allow all on secrets" ON secrets;
+DROP POLICY IF EXISTS "Allow all on submissions" ON submissions;
+DROP POLICY IF EXISTS "Allow all on guesses" ON guesses;
+
 CREATE POLICY "Allow all on rooms" ON rooms FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on players" ON players FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on rounds" ON rounds FOR ALL USING (true) WITH CHECK (true);
@@ -90,13 +97,45 @@ CREATE POLICY "Allow all on secrets" ON secrets FOR ALL USING (true) WITH CHECK 
 CREATE POLICY "Allow all on submissions" ON submissions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on guesses" ON guesses FOR ALL USING (true) WITH CHECK (true);
 
--- Enable Realtime for tables
-ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
-ALTER PUBLICATION supabase_realtime ADD TABLE players;
-ALTER PUBLICATION supabase_realtime ADD TABLE rounds;
-ALTER PUBLICATION supabase_realtime ADD TABLE secrets;
-ALTER PUBLICATION supabase_realtime ADD TABLE submissions;
-ALTER PUBLICATION supabase_realtime ADD TABLE guesses;
+-- Enable Realtime for tables (skip if already added)
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE players;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE rounds;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE secrets;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE submissions;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE guesses;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+END $$;
 
 -- Function to generate a room code
 CREATE OR REPLACE FUNCTION generate_room_code()
