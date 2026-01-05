@@ -9,14 +9,15 @@ import { WaitingRoom } from "@/components/WaitingRoom";
 import { CategorySelector } from "@/components/CategorySelector";
 import { NumberHintCard } from "@/components/NumberHintCard";
 import { PlayerSpeechInput } from "@/components/PlayerSpeechInput";
-import { JudgeNumberGuessInputs } from "@/components/JudgeNumberGuessInputs";
+import { JudgeRankingInterface } from "@/components/JudgeRankingInterface";
+import { PlayerJudgingView } from "@/components/PlayerJudgingView";
 import { ResultScreen } from "@/components/ResultScreen";
 import { Scoreboard } from "@/components/Scoreboard";
 import { GameOver } from "@/components/GameOver";
 import { Logo } from "@/components/Logo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Gavel, Users, LogOut, CheckCircle2, Clock, Eye } from "lucide-react";
+import { Loader2, Gavel, Users, LogOut, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { calculateRoundResults } from "@/lib/utils";
 
@@ -450,15 +451,27 @@ export default function RoomPage() {
           {/* ============ PHASE: JUDGING - JUDGE VIEW ============ */}
           {currentRound?.phase === "judging" && isJudge && allSubmitted && (
             <motion.div
-              key="judge-guess"
+              key="judge-rank"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <JudgeNumberGuessInputs
-                orderedPlayers={playerGuesses}
-                onGuessChange={handleGuessChange}
-                onSubmit={handleSubmitGuesses}
+              <JudgeRankingInterface
+                submissions={playerGuesses.map(p => ({
+                  playerId: p.playerId,
+                  playerName: p.playerName,
+                  submission: p.submission,
+                  positionGuess: playerGuesses.findIndex(pg => pg.playerId === p.playerId) + 1,
+                }))}
+                onRankingSubmit={async (rankings) => {
+                  const guessesData = rankings.map((ranking) => ({
+                    player_id: ranking.playerId,
+                    position_guess: ranking.positionGuess,
+                    number_guess: null, // No number guessing for judge
+                  }));
+                  await submitGuesses(guessesData);
+                  await calculateResults();
+                }}
                 isSubmitting={isSubmittingGuesses}
               />
             </motion.div>
@@ -473,63 +486,12 @@ export default function RoomPage() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-6"
             >
-              {/* Status Banner */}
-              <Card className="p-4 bg-yellow-500/10 border-yellow-500/30">
-                <div className="flex items-center justify-center gap-3">
-                  <motion.div
-                    animate={{ rotate: [0, 10, -10, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  >
-                    <Gavel className="w-6 h-6 text-yellow-500" />
-                  </motion.div>
-                  <p className="text-white">
-                    <span className="font-bold text-yellow-500">{judge?.name}</span> is guessing numbers...
-                  </p>
-                </div>
-              </Card>
-
-              {/* All Submissions - Clean List */}
-              <Card className="p-6 bg-card border-border">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-tierlist-blue" />
-                  All Submissions
-                </h3>
-                <div className="space-y-3">
-                  {submissions
-                    .map((sub) => {
-                      const player = players.find((p) => p.id === sub.player_id);
-                      const secret = secrets.find((s) => s.player_id === sub.player_id);
-                      const isMe = sub.player_id === playerId;
-                      return { ...sub, player, secret, isMe };
-                    })
-                    .sort((a, b) => (a.secret?.value || 0) - (b.secret?.value || 0))
-                    .map((item, index) => (
-                      <div
-                        key={item.id}
-                        className={`flex items-center gap-3 p-3 rounded-xl ${
-                          item.isMe
-                            ? "bg-tierlist-blue/20 border border-tierlist-blue/30"
-                            : "bg-muted/30"
-                        }`}
-                      >
-                        <div className="w-8 h-8 rounded-full bg-tierlist-blue flex items-center justify-center text-white font-bold text-sm">
-                          {index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-white font-medium">&quot;{item.text}&quot;</p>
-                          <p className="text-white/50 text-sm">
-                            {item.player?.name}
-                            {item.isMe && (
-                              <span className="ml-2 text-tierlist-blue">
-                                (You - #{item.secret?.value})
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </Card>
+              <PlayerJudgingView
+                submissions={submissions}
+                secrets={secrets}
+                players={players}
+                judgeName={judge?.name || "Judge"}
+              />
             </motion.div>
           )}
 
