@@ -61,6 +61,8 @@ npm install
 2. Go to **SQL Editor** and run the contents of `supabase/schema.sql`
 3. Go to **Settings → API** and copy your credentials
 
+> ♻️ **Updating?** `supabase/schema.sql` is idempotent — whenever you pull a version of the game that changed it, just re-run the whole file in the SQL Editor.
+
 ### 3. Configure Environment
 
 Create a `.env.local` file:
