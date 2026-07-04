@@ -34,8 +34,12 @@ CREATE TABLE IF NOT EXISTS rounds (
   category TEXT NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT true,
   phase TEXT NOT NULL DEFAULT 'waiting' CHECK (phase IN ('waiting', 'submitting', 'judging', 'results', 'finished')),
+  scores_applied BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Columns added after initial release (no-ops on fresh installs)
+ALTER TABLE rounds ADD COLUMN IF NOT EXISTS scores_applied BOOLEAN NOT NULL DEFAULT false;
 
 -- Secrets table (player secret numbers)
 CREATE TABLE IF NOT EXISTS secrets (
@@ -346,16 +350,41 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to submit judge guesses
+-- Function to submit judge guesses and score the round in one shot.
+--
+-- Scoring rules:
+--   * Player placed at their exactly-correct position: player +1, judge +1
+--   * Judge orders EVERYONE correctly: judge +2 bonus
+--
+-- Scoring is idempotent (rounds.scores_applied guards against retries and
+-- double-clicks) and the game is marked finished when someone reaches the
+-- room's winning score.
 CREATE OR REPLACE FUNCTION submit_guesses(p_round_id UUID, p_judge_id UUID, p_guesses JSON)
 RETURNS VOID AS $$
 DECLARE
   v_guess JSON;
+  v_room_id TEXT;
+  v_scores_applied BOOLEAN;
+  v_row RECORD;
+  v_player_count INTEGER := 0;
+  v_correct_count INTEGER := 0;
+  v_judge_points INTEGER;
+  v_winning_score INTEGER;
 BEGIN
-  -- Delete existing guesses for this round
+  SELECT room_id, scores_applied INTO v_room_id, v_scores_applied
+  FROM rounds WHERE id = p_round_id;
+
+  IF v_room_id IS NULL THEN
+    RAISE EXCEPTION 'Round not found';
+  END IF;
+
+  IF v_scores_applied THEN
+    RETURN; -- already scored; ignore duplicate submissions
+  END IF;
+
+  -- Replace any existing guesses for this round
   DELETE FROM guesses WHERE round_id = p_round_id AND judge_id = p_judge_id;
 
-  -- Insert new guesses
   FOR v_guess IN SELECT * FROM json_array_elements(p_guesses) LOOP
     INSERT INTO guesses (round_id, judge_id, player_id, position_guess, number_guess)
     VALUES (
@@ -367,115 +396,44 @@ BEGIN
     );
   END LOOP;
 
-  -- Update round phase to results
-  UPDATE rounds SET phase = 'results' WHERE id = p_round_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to calculate and apply round results
-CREATE OR REPLACE FUNCTION calculate_round_results(p_round_id UUID)
-RETURNS JSON AS $$
-DECLARE
-  v_results JSON;
-  v_player RECORD;
-  v_secret RECORD;
-  v_guess RECORD;
-  v_actual_positions JSON;
-  v_position INTEGER;
-  v_player_points INTEGER;
-  v_judge_points INTEGER := 0;
-  v_judge_id UUID;
-  v_room_id TEXT;
-  v_all_positions_correct BOOLEAN := TRUE;
-  v_player_count INTEGER := 0;
-BEGIN
-  -- Get judge_id and room_id
-  SELECT judge_id, room_id INTO v_judge_id, v_room_id FROM rounds WHERE id = p_round_id;
-
-  -- Build actual positions based on secret values
-  WITH ranked AS (
-    SELECT
-      s.player_id,
-      s.value,
-      ROW_NUMBER() OVER (ORDER BY s.value ASC) as actual_position
-    FROM secrets s
-    WHERE s.round_id = p_round_id
-  )
-  SELECT json_agg(json_build_object(
-    'player_id', ranked.player_id,
-    'value', ranked.value,
-    'actual_position', ranked.actual_position
-  )) INTO v_actual_positions
-  FROM ranked;
-
-  -- Calculate points for each player
-  FOR v_player IN
-    SELECT p.id, p.name
-    FROM players p
-    WHERE p.room_id = v_room_id AND p.id != v_judge_id
+  -- Compare guessed positions against the true ordering by secret number.
+  -- A player the judge skipped counts as incorrect (LEFT JOIN + COALESCE).
+  FOR v_row IN
+    WITH actual AS (
+      SELECT player_id, ROW_NUMBER() OVER (ORDER BY value ASC) AS pos
+      FROM secrets
+      WHERE round_id = p_round_id
+    )
+    SELECT a.player_id, COALESCE(g.position_guess = a.pos, false) AS is_correct
+    FROM actual a
+    LEFT JOIN guesses g ON g.round_id = p_round_id AND g.player_id = a.player_id
   LOOP
-    v_player_points := 0;
     v_player_count := v_player_count + 1;
-
-    -- Get secret and guess for this player
-    SELECT value INTO v_secret FROM secrets WHERE round_id = p_round_id AND player_id = v_player.id;
-    SELECT position_guess, number_guess INTO v_guess FROM guesses WHERE round_id = p_round_id AND player_id = v_player.id;
-
-    -- Get actual position
-    SELECT actual_position INTO v_position
-    FROM json_to_recordset(v_actual_positions) AS x(player_id UUID, value INTEGER, actual_position INTEGER)
-    WHERE x.player_id = v_player.id;
-
-    -- Check if position is correct (for full ordering check)
-    IF v_guess.position_guess != v_position THEN
-      v_all_positions_correct := FALSE;
+    IF v_row.is_correct THEN
+      v_correct_count := v_correct_count + 1;
+      UPDATE players SET score = score + 1 WHERE id = v_row.player_id;
     END IF;
-
-    -- Number correct → Both Judge +1 AND Player +1
-    IF v_guess.number_guess IS NOT NULL AND v_guess.number_guess = v_secret.value THEN
-      v_player_points := v_player_points + 1;
-      v_judge_points := v_judge_points + 1;
-    END IF;
-
-    -- Update player score
-    UPDATE players SET score = score + v_player_points WHERE id = v_player.id;
   END LOOP;
 
-  -- Judge gets +1 only if ALL positions are correct (full ordering bonus)
-  IF v_all_positions_correct AND v_player_count > 0 THEN
-    v_judge_points := v_judge_points + 1;
+  v_judge_points := v_correct_count;
+  IF v_player_count > 0 AND v_correct_count = v_player_count THEN
+    v_judge_points := v_judge_points + 2; -- perfect ordering bonus
   END IF;
+  UPDATE players SET score = score + v_judge_points WHERE id = p_judge_id;
 
-  -- Update judge score
-  UPDATE players SET score = score + v_judge_points WHERE id = v_judge_id;
+  UPDATE rounds SET phase = 'results', scores_applied = true WHERE id = p_round_id;
 
-  -- Keep the round active with 'results' phase so UI can display results
-  -- The round will be deactivated when the next round starts
-  -- (start_round already handles: UPDATE rounds SET is_active = false, phase = 'finished')
-
-  RETURN v_actual_positions;
+  -- End the game when someone reaches the winning score
+  SELECT winning_score INTO v_winning_score FROM rooms WHERE id = v_room_id;
+  IF EXISTS (
+    SELECT 1 FROM players WHERE room_id = v_room_id AND score >= v_winning_score
+  ) THEN
+    UPDATE rooms SET status = 'finished' WHERE id = v_room_id;
+  END IF;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to check for winner
-CREATE OR REPLACE FUNCTION check_winner(p_room_id TEXT)
-RETURNS JSON AS $$
-DECLARE
-  v_winner JSON;
-  v_winning_score INTEGER;
-BEGIN
-  SELECT winning_score INTO v_winning_score FROM rooms WHERE id = p_room_id;
-
-  SELECT row_to_json(p) INTO v_winner
-  FROM players p
-  WHERE p.room_id = p_room_id AND p.score >= v_winning_score
-  ORDER BY p.score DESC
-  LIMIT 1;
-
-  IF v_winner IS NOT NULL THEN
-    UPDATE rooms SET status = 'finished' WHERE id = p_room_id;
-  END IF;
-
-  RETURN v_winner;
-END;
-$$ LANGUAGE plpgsql;
+-- Superseded functions: scoring and winner detection now live inside
+-- submit_guesses. Drop them so stale copies can't be called.
+DROP FUNCTION IF EXISTS calculate_round_results(UUID);
+DROP FUNCTION IF EXISTS check_winner(TEXT);

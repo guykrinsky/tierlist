@@ -309,13 +309,13 @@ export function useGameState(roomId: string, playerId: string | null) {
     [gameState.currentRound, playerId, supabase]
   );
 
-  // Submit judge guesses
+  // Submit judge guesses; the RPC also scores the round and marks the
+  // game finished when someone reaches the winning score.
   const submitGuesses = useCallback(
     async (
       guesses: Array<{
         player_id: string;
         position_guess: number;
-        number_guess: number | null;
       }>
     ) => {
       if (!gameState.currentRound || !playerId) return;
@@ -333,20 +333,6 @@ export function useGameState(roomId: string, playerId: string | null) {
     },
     [gameState.currentRound, playerId, supabase]
   );
-
-  // Calculate and apply round results
-  const calculateResults = useCallback(async () => {
-    if (!gameState.currentRound) return;
-
-    const { error } = await supabase.rpc("calculate_round_results", {
-      p_round_id: gameState.currentRound.id,
-    });
-
-    if (error) {
-      console.error("Error calculating results:", error);
-      throw error;
-    }
-  }, [gameState.currentRound, supabase]);
 
   // Start next round with category
   const nextRound = useCallback(async (category: string) => {
@@ -378,20 +364,6 @@ export function useGameState(roomId: string, playerId: string | null) {
       .eq("id", roomId);
   }, [roomId, gameState.currentRound, supabase]);
 
-  // Check for winner
-  const checkWinner = useCallback(async () => {
-    const { data, error } = await supabase.rpc("check_winner", {
-      p_room_id: roomId,
-    });
-
-    if (error) {
-      console.error("Error checking winner:", error);
-      return null;
-    }
-
-    return data as Player | null;
-  }, [roomId, supabase]);
-
   // Reset game for new round
   const resetGame = useCallback(async () => {
     // Reset all player scores and start fresh
@@ -413,10 +385,8 @@ export function useGameState(roomId: string, playerId: string | null) {
     startGame,
     submitItem,
     submitGuesses,
-    calculateResults,
     nextRound,
     prepareNextRound,
-    checkWinner,
     resetGame,
     leaveRoom,
     refetch: fetchGameData,

@@ -1,29 +1,22 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { RoundResult } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Display-side mirror of the scoring applied by the submit_guesses SQL
+// function. Keep the rules in sync with supabase/schema.sql:
+//   * Player placed at their exactly-correct position: player +1, judge +1
+//   * Judge orders everyone correctly: judge +2 bonus
 export function calculateRoundResults(
   players: { id: string; name: string }[],
   secrets: { player_id: string; value: number }[],
   submissions: { player_id: string; text: string }[],
-  guesses: { player_id: string; position_guess: number; number_guess: number | null }[]
+  guesses: { player_id: string; position_guess: number }[]
 ): {
-  results: {
-    playerId: string;
-    playerName: string;
-    secretNumber: number;
-    submission: string;
-    judgePositionGuess: number;
-    judgeNumberGuess: number | null;
-    actualPosition: number;
-    positionCorrect: boolean;
-    numberCorrect: boolean;
-    playerPointsEarned: number;
-    judgePointsEarned: number;
-  }[];
+  results: RoundResult[];
   totalJudgePoints: number;
   allPositionsCorrect: boolean;
 } {
@@ -37,8 +30,7 @@ export function calculateRoundResults(
   let totalJudgePoints = 0;
   let allPositionsCorrect = true;
 
-  // First pass: calculate individual results and check if ALL positions are correct
-  const resultsWithoutOrdering = players.map((player) => {
+  const results = players.map((player) => {
     const secret = secrets.find((s) => s.player_id === player.id);
     const submission = submissions.find((s) => s.player_id === player.id);
     const guess = guesses.find((g) => g.player_id === player.id);
@@ -46,15 +38,15 @@ export function calculateRoundResults(
     const secretNumber = secret?.value ?? 0;
     const actualPosition = actualPositions[player.id] ?? 0;
     const judgePositionGuess = guess?.position_guess ?? 0;
-    const judgeNumberGuess = guess?.number_guess ?? null;
 
     const positionCorrect = judgePositionGuess === actualPosition;
-    const numberCorrect = judgeNumberGuess !== null && judgeNumberGuess === secretNumber;
-
-    // Track if any position is wrong
     if (!positionCorrect) {
       allPositionsCorrect = false;
     }
+
+    const playerPointsEarned = positionCorrect ? 1 : 0;
+    const judgePointsEarned = positionCorrect ? 1 : 0;
+    totalJudgePoints += judgePointsEarned;
 
     return {
       playerId: player.id,
@@ -62,40 +54,16 @@ export function calculateRoundResults(
       secretNumber,
       submission: submission?.text ?? "",
       judgePositionGuess,
-      judgeNumberGuess,
       actualPosition,
       positionCorrect,
-      numberCorrect,
-    };
-  });
-
-  // Second pass: calculate points with new scoring rules
-  const results = resultsWithoutOrdering.map((result) => {
-    let playerPointsEarned = 0;
-    let judgePointsEarned = 0;
-
-    // Scoring:
-    // 1. ALL positions correct → Judge gets +1 total (not per-position)
-    //    We'll add this to totalJudgePoints once after the loop
-
-    // 2. Number correct → Both Judge +1 AND Player +1
-    if (result.numberCorrect) {
-      playerPointsEarned += 1;
-      judgePointsEarned += 1;
-    }
-
-    totalJudgePoints += judgePointsEarned;
-
-    return {
-      ...result,
       playerPointsEarned,
       judgePointsEarned,
     };
   });
 
-  // Add +1 for full correct ordering
+  // Perfect ordering bonus
   if (allPositionsCorrect && players.length > 0) {
-    totalJudgePoints += 1;
+    totalJudgePoints += 2;
   }
 
   return { results, totalJudgePoints, allPositionsCorrect };

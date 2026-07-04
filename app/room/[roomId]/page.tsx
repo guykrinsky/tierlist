@@ -25,7 +25,6 @@ interface PlayerGuess {
   playerId: string;
   playerName: string;
   submission: string;
-  numberGuess: number | null;
 }
 
 export default function RoomPage() {
@@ -49,7 +48,6 @@ export default function RoomPage() {
     startGame,
     submitItem,
     submitGuesses,
-    calculateResults,
     nextRound,
     prepareNextRound,
     resetGame,
@@ -77,7 +75,6 @@ export default function RoomPage() {
           playerId: player.id,
           playerName: player.name,
           submission: submission?.text || "",
-          numberGuess: null,
         };
       });
       setPlayerGuesses(initialGuesses);
@@ -434,13 +431,18 @@ export default function RoomPage() {
                   positionGuess: playerGuesses.findIndex(pg => pg.playerId === p.playerId) + 1,
                 }))}
                 onRankingSubmit={async (rankings) => {
-                  const guessesData = rankings.map((ranking) => ({
-                    player_id: ranking.playerId,
-                    position_guess: ranking.positionGuess,
-                    number_guess: null, // No number guessing for judge
-                  }));
-                  await submitGuesses(guessesData);
-                  await calculateResults();
+                  setIsSubmittingGuesses(true);
+                  try {
+                    const guessesData = rankings.map((ranking) => ({
+                      player_id: ranking.playerId,
+                      position_guess: ranking.positionGuess,
+                    }));
+                    await submitGuesses(guessesData);
+                  } catch {
+                    toast({ title: "Error", description: "Failed to submit rankings", variant: "destructive" });
+                  } finally {
+                    setIsSubmittingGuesses(false);
+                  }
                 }}
                 isSubmitting={isSubmittingGuesses}
               />
