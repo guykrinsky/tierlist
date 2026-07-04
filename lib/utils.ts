@@ -5,35 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function generateRoomCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
-
-export function generateRandomNumber(min: number = 1, max: number = 10): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-export function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
-
-export function getNextJudgeIndex(
-  currentJudgeIndex: number,
-  totalPlayers: number
-): number {
-  return (currentJudgeIndex + 1) % totalPlayers;
-}
-
 export function calculateRoundResults(
   players: { id: string; name: string }[],
   secrets: { player_id: string; value: number }[],

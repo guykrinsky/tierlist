@@ -1,5 +1,5 @@
 -- TIERLIST Game Database Schema
--- Run this in your Supabase SQL Editor
+-- Run this in your Supabase SQL Editor. Safe to re-run: the whole file is idempotent.
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -83,6 +83,13 @@ ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE guesses ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies (Allow all for now - in production, you'd want more restrictive policies)
+DROP POLICY IF EXISTS "Allow all on rooms" ON rooms;
+DROP POLICY IF EXISTS "Allow all on players" ON players;
+DROP POLICY IF EXISTS "Allow all on rounds" ON rounds;
+DROP POLICY IF EXISTS "Allow all on secrets" ON secrets;
+DROP POLICY IF EXISTS "Allow all on submissions" ON submissions;
+DROP POLICY IF EXISTS "Allow all on guesses" ON guesses;
+
 CREATE POLICY "Allow all on rooms" ON rooms FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on players" ON players FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on rounds" ON rounds FOR ALL USING (true) WITH CHECK (true);
@@ -90,13 +97,45 @@ CREATE POLICY "Allow all on secrets" ON secrets FOR ALL USING (true) WITH CHECK 
 CREATE POLICY "Allow all on submissions" ON submissions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on guesses" ON guesses FOR ALL USING (true) WITH CHECK (true);
 
--- Enable Realtime for tables
-ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
-ALTER PUBLICATION supabase_realtime ADD TABLE players;
-ALTER PUBLICATION supabase_realtime ADD TABLE rounds;
-ALTER PUBLICATION supabase_realtime ADD TABLE secrets;
-ALTER PUBLICATION supabase_realtime ADD TABLE submissions;
-ALTER PUBLICATION supabase_realtime ADD TABLE guesses;
+-- Enable Realtime for tables (skip if already added)
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE players;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE rounds;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE secrets;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE submissions;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE guesses;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+END $$;
 
 -- Function to generate a room code
 CREATE OR REPLACE FUNCTION generate_room_code()
@@ -159,11 +198,11 @@ DECLARE
 BEGIN
   -- Check if room exists and is in waiting status
   SELECT status INTO v_room_status FROM rooms WHERE id = p_room_id;
-  
+
   IF v_room_status IS NULL THEN
     RAISE EXCEPTION 'Room not found';
   END IF;
-  
+
   IF v_room_status != 'waiting' THEN
     RAISE EXCEPTION 'Game already started';
   END IF;
@@ -197,7 +236,7 @@ DECLARE
 BEGIN
   -- Count non-judge players
   SELECT COUNT(*) INTO v_player_count FROM players WHERE room_id = p_room_id;
-  
+
   -- Check max 10 non-judge players (11 total with judge)
   IF v_player_count > 11 THEN
     RAISE EXCEPTION 'Too many players. Maximum 10 non-judge players allowed per round.';
@@ -322,7 +361,7 @@ BEGIN
 
   -- Build actual positions based on secret values
   WITH ranked AS (
-    SELECT 
+    SELECT
       s.player_id,
       s.value,
       ROW_NUMBER() OVER (ORDER BY s.value ASC) as actual_position
@@ -337,18 +376,18 @@ BEGIN
   FROM ranked;
 
   -- Calculate points for each player
-  FOR v_player IN 
-    SELECT p.id, p.name 
-    FROM players p 
-    WHERE p.room_id = v_room_id AND p.id != v_judge_id 
+  FOR v_player IN
+    SELECT p.id, p.name
+    FROM players p
+    WHERE p.room_id = v_room_id AND p.id != v_judge_id
   LOOP
     v_player_points := 0;
     v_player_count := v_player_count + 1;
-    
+
     -- Get secret and guess for this player
     SELECT value INTO v_secret FROM secrets WHERE round_id = p_round_id AND player_id = v_player.id;
     SELECT position_guess, number_guess INTO v_guess FROM guesses WHERE round_id = p_round_id AND player_id = v_player.id;
-    
+
     -- Get actual position
     SELECT actual_position INTO v_position
     FROM json_to_recordset(v_actual_positions) AS x(player_id UUID, value INTEGER, actual_position INTEGER)
@@ -407,4 +446,3 @@ BEGIN
   RETURN v_winner;
 END;
 $$ LANGUAGE plpgsql;
-

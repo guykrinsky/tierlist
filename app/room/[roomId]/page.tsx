@@ -123,36 +123,6 @@ export default function RoomPage() {
     }
   };
 
-  const handleGuessChange = (playerId: string, numberGuess: number | null) => {
-    setPlayerGuesses((prev) =>
-      prev.map((p) => (p.playerId === playerId ? { ...p, numberGuess } : p))
-    );
-  };
-
-  const handleSubmitGuesses = async () => {
-    setIsSubmittingGuesses(true);
-    try {
-      const sortedByGuess = [...playerGuesses].sort((a, b) => {
-        if (a.numberGuess === null && b.numberGuess === null) return 0;
-        if (a.numberGuess === null) return 1;
-        if (b.numberGuess === null) return -1;
-        return a.numberGuess - b.numberGuess;
-      });
-
-      const guessesData = playerGuesses.map((p) => {
-        const position = sortedByGuess.findIndex((sp) => sp.playerId === p.playerId) + 1;
-        return { player_id: p.playerId, position_guess: position, number_guess: p.numberGuess };
-      });
-
-      await submitGuesses(guessesData);
-      await calculateResults();
-    } catch {
-      toast({ title: "Error", description: "Failed to submit guesses", variant: "destructive" });
-    } finally {
-      setIsSubmittingGuesses(false);
-    }
-  };
-
   const handleNextRound = async () => {
     const winner = players.find((p) => p.score >= (room?.winning_score || 10));
     if (winner) {

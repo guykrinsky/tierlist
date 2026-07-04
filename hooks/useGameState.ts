@@ -14,18 +14,6 @@ import type {
   RoundPhase,
 } from "@/types";
 
-// Debounce helper
-function debounce<T extends (...args: unknown[]) => unknown>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
-  return (...args: Parameters<T>) => {
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
-
 export function useGameState(roomId: string, playerId: string | null) {
   const [gameState, setGameState] = useState<GameState>({
     room: null,
@@ -145,11 +133,6 @@ export function useGameState(roomId: string, playerId: string | null) {
     }
   }, [roomId, playerId, supabase]);
 
-  // Keep track of debounced fetch
-  const debouncedFetchRef = useRef<ReturnType<typeof debounce> | null>(null);
-
-  // Track submission count locally to avoid unnecessary re-renders
-  const submissionCountRef = useRef(0);
   const currentPhaseRef = useRef<string | null>(null);
 
   // Subscribe to realtime updates - OPTIMIZED to prevent unnecessary refreshes
@@ -211,8 +194,6 @@ export function useGameState(roomId: string, playerId: string | null) {
                 s.player_id === newSubmission.player_id
               );
               if (exists) return prev;
-              
-              submissionCountRef.current = prev.submissions.length + 1;
               // Add full submission data for live ordering
               return {
                 ...prev,
