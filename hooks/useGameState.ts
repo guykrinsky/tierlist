@@ -364,6 +364,64 @@ export function useGameState(roomId: string, playerId: string | null) {
       .eq("id", roomId);
   }, [roomId, gameState.currentRound, supabase]);
 
+  // Add a bot player (host action, waiting room only)
+  const addBot = useCallback(async () => {
+    const { error } = await supabase.rpc("add_bot", { p_room_id: roomId });
+    if (error) {
+      console.error("Error adding bot:", error);
+      throw error;
+    }
+  }, [roomId, supabase]);
+
+  // Remove a bot player (host action)
+  const removeBot = useCallback(async (botId: string) => {
+    const { error } = await supabase
+      .from("players")
+      .delete()
+      .eq("id", botId)
+      .eq("is_bot", true);
+    if (error) {
+      console.error("Error removing bot:", error);
+      throw error;
+    }
+  }, [supabase]);
+
+  // Bots don't have clients, so the host's client drives their turns:
+  // once per round, after a human-feeling delay, ask the server to
+  // submit answers for all bots. play_bot_turns is idempotent, keeps
+  // secrets server-side, and advances the phase when everyone is in.
+  const botTurnRoundRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const round = gameState.currentRound;
+    if (!round || round.phase !== "submitting") return;
+    if (!gameState.currentPlayer?.is_host) return;
+
+    const hasPendingBots = gameState.players.some(
+      (p) =>
+        p.is_bot &&
+        p.id !== round.judge_id &&
+        !gameState.submissions.some((s) => s.player_id === p.id)
+    );
+    if (!hasPendingBots) return;
+
+    if (botTurnRoundRef.current === round.id) return;
+    botTurnRoundRef.current = round.id;
+
+    // No cleanup on purpose: effect re-runs (new submissions arriving)
+    // must not cancel the pending bot turn.
+    setTimeout(() => {
+      supabase
+        .rpc("play_bot_turns", { p_round_id: round.id })
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error playing bot turns:", error);
+            botTurnRoundRef.current = null; // allow a retry
+          }
+        });
+    }, 2000 + Math.random() * 3000);
+  }, [gameState.currentRound, gameState.currentPlayer, gameState.players, gameState.submissions, supabase]);
+
   // Reset game for new round
   const resetGame = useCallback(async () => {
     // Reset all player scores and start fresh
@@ -389,6 +447,8 @@ export function useGameState(roomId: string, playerId: string | null) {
     prepareNextRound,
     resetGame,
     leaveRoom,
+    addBot,
+    removeBot,
     refetch: fetchGameData,
   };
 }

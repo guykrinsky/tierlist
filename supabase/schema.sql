@@ -23,8 +23,11 @@ CREATE TABLE IF NOT EXISTS players (
   score INTEGER NOT NULL DEFAULT 0,
   is_judge BOOLEAN NOT NULL DEFAULT false,
   is_host BOOLEAN NOT NULL DEFAULT false,
+  is_bot BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE players ADD COLUMN IF NOT EXISTS is_bot BOOLEAN NOT NULL DEFAULT false;
 
 -- Rounds table
 CREATE TABLE IF NOT EXISTS rounds (
@@ -269,16 +272,18 @@ BEGIN
 
   DELETE FROM players WHERE id = p_player_id;
 
-  -- Last one out closes the room
-  IF NOT EXISTS (SELECT 1 FROM players WHERE room_id = v_room_id) THEN
+  -- Last HUMAN out closes the room; bots don't keep a room alive
+  IF NOT EXISTS (
+    SELECT 1 FROM players WHERE room_id = v_room_id AND is_bot = false
+  ) THEN
     DELETE FROM rooms WHERE id = v_room_id;
     RETURN;
   END IF;
 
-  -- Pass host to the longest-present remaining player
+  -- Pass host to the longest-present remaining human
   IF v_was_host THEN
     SELECT id INTO v_new_host
-    FROM players WHERE room_id = v_room_id
+    FROM players WHERE room_id = v_room_id AND is_bot = false
     ORDER BY created_at ASC LIMIT 1;
 
     UPDATE players SET is_host = true WHERE id = v_new_host;
@@ -293,6 +298,101 @@ BEGIN
       PERFORM advance_round_if_complete(v_active_round_id);
     END IF;
   END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add a bot player to a waiting room (host action).
+CREATE OR REPLACE FUNCTION add_bot(p_room_id TEXT)
+RETURNS JSON AS $$
+DECLARE
+  v_names TEXT[] := ARRAY[
+    'Botrick', 'RoboRhea', 'Circuit Sam', 'Chip', 'Bleepzor',
+    'Data Dave', 'Gigabyte Gail', 'Servo', 'Nutsy Bolts', 'Turing Tina'
+  ];
+  v_name TEXT;
+  v_status TEXT;
+  v_player JSON;
+BEGIN
+  SELECT status INTO v_status FROM rooms WHERE id = p_room_id;
+
+  IF v_status IS NULL THEN
+    RAISE EXCEPTION 'Room not found';
+  END IF;
+
+  IF v_status != 'waiting' THEN
+    RAISE EXCEPTION 'Bots can only be added before the game starts';
+  END IF;
+
+  IF (SELECT COUNT(*) FROM players WHERE room_id = p_room_id) >= 10 THEN
+    RAISE EXCEPTION 'Room is full';
+  END IF;
+
+  -- Pick a random bot name not already used in this room
+  SELECT bot_name INTO v_name
+  FROM unnest(v_names) AS n(bot_name)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM players
+    WHERE room_id = p_room_id AND LOWER(players.name) = LOWER(bot_name)
+  )
+  ORDER BY random()
+  LIMIT 1;
+
+  IF v_name IS NULL THEN
+    RAISE EXCEPTION 'No bot names left';
+  END IF;
+
+  INSERT INTO players (room_id, name, is_bot)
+  VALUES (p_room_id, v_name, true)
+  RETURNING row_to_json(players.*) INTO v_player;
+
+  RETURN v_player;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Make every bot in the round submit an answer that hints at its secret
+-- number, like a human player would. Runs server-side so the judge's
+-- client never sees the secrets. Idempotent: bots that already submitted
+-- are skipped, so it's safe for the host client to call this repeatedly.
+CREATE OR REPLACE FUNCTION play_bot_turns(p_round_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  v_bot RECORD;
+  v_phrases TEXT[];
+  v_text TEXT;
+BEGIN
+  FOR v_bot IN
+    SELECT p.id, s.value
+    FROM players p
+    JOIN rounds r ON r.id = p_round_id AND r.room_id = p.room_id
+    JOIN secrets s ON s.round_id = p_round_id AND s.player_id = p.id
+    WHERE p.is_bot = true
+      AND r.phase = 'submitting'
+      AND NOT EXISTS (
+        SELECT 1 FROM submissions sub
+        WHERE sub.round_id = p_round_id AND sub.player_id = p.id
+      )
+  LOOP
+    v_phrases := CASE v_bot.value
+      WHEN 1 THEN ARRAY['the absolute worst one there is', 'the bottom of the barrel', 'the single worst pick imaginable']
+      WHEN 2 THEN ARRAY['a really bad one', 'something close to the worst', 'a truly awful choice']
+      WHEN 3 THEN ARRAY['a pretty weak one', 'a below-average pick', 'not the worst, but still bad']
+      WHEN 4 THEN ARRAY['a slightly disappointing one', 'a bit under mid', 'almost average, but worse']
+      WHEN 5 THEN ARRAY['a perfectly mid one', 'the most average option ever', 'dead middle of the pack']
+      WHEN 6 THEN ARRAY['a slightly above average one', 'decent, nothing special', 'just a notch over mid']
+      WHEN 7 THEN ARRAY['a genuinely good one', 'a solid, respectable pick', 'clearly above average']
+      WHEN 8 THEN ARRAY['a really good one', 'a great choice, honestly', 'near the top for sure']
+      WHEN 9 THEN ARRAY['an amazing one', 'almost the best there is', 'top shelf, just short of perfect']
+      ELSE ARRAY['the best one in existence', 'the undisputed number one', 'literal perfection']
+    END;
+
+    v_text := v_phrases[1 + floor(random() * array_length(v_phrases, 1))::int];
+
+    INSERT INTO submissions (round_id, player_id, text)
+    VALUES (p_round_id, v_bot.id, v_text)
+    ON CONFLICT (round_id, player_id) DO NOTHING;
+  END LOOP;
+
+  PERFORM advance_round_if_complete(p_round_id);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -343,14 +443,20 @@ BEGIN
   -- Reset all players' judge status
   UPDATE players SET is_judge = false WHERE room_id = p_room_id;
 
-  -- Select judge (rotate based on round number)
+  -- Select judge (rotate based on round number). Bots never judge, so
+  -- rotation runs over human players only - this is what makes solo
+  -- play against bots work: the lone human is always the judge.
   SELECT id INTO v_judge_id
   FROM (
     SELECT id, ROW_NUMBER() OVER (ORDER BY created_at) as rn
     FROM players
-    WHERE room_id = p_room_id
+    WHERE room_id = p_room_id AND is_bot = false
   ) sub
-  WHERE rn = ((v_current_round - 1) % (SELECT COUNT(*) FROM players WHERE room_id = p_room_id)) + 1;
+  WHERE rn = ((v_current_round - 1) % (SELECT COUNT(*) FROM players WHERE room_id = p_room_id AND is_bot = false)) + 1;
+
+  IF v_judge_id IS NULL THEN
+    RAISE EXCEPTION 'No human players left to judge';
+  END IF;
 
   -- Set the judge
   UPDATE players SET is_judge = true WHERE id = v_judge_id;

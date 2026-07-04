@@ -18,6 +18,7 @@ export interface Player {
   score: number;
   is_judge: boolean;
   is_host: boolean;
+  is_bot: boolean;
   created_at: string;
 }
 

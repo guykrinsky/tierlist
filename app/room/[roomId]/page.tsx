@@ -52,16 +52,21 @@ export default function RoomPage() {
     prepareNextRound,
     resetGame,
     leaveRoom,
+    addBot,
+    removeBot,
   } = useGameState(roomId, playerId);
 
-  // Mirrors the judge rotation in the start_round SQL function
+  // Mirrors the judge rotation in the start_round SQL function:
+  // humans only, ordered by join time
   const getNextJudge = () => {
-    const sortedPlayers = [...players].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    if (sortedPlayers.length === 0) return null;
+    const sortedHumans = players
+      .filter((p) => !p.is_bot)
+      .sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    if (sortedHumans.length === 0) return null;
     const currentRoundNum = room?.current_round || 0;
-    return sortedPlayers[currentRoundNum % sortedPlayers.length] ?? null;
+    return sortedHumans[currentRoundNum % sortedHumans.length] ?? null;
   };
 
   const [playerGuesses, setPlayerGuesses] = useState<PlayerGuess[]>([]);
@@ -198,6 +203,8 @@ export default function RoomPage() {
         currentPlayer={currentPlayer}
         onStartGame={handleStartGame}
         onLeaveRoom={handleLeaveRoom}
+        onAddBot={addBot}
+        onRemoveBot={removeBot}
       />
     );
   }
