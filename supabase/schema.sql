@@ -298,7 +298,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to submit an item
+-- Function to submit an item.
+-- Also advances the round to 'judging' once every non-judge player has
+-- submitted, so the phase transition is authoritative and race-free.
 CREATE OR REPLACE FUNCTION submit_item(p_round_id UUID, p_player_id UUID, p_text TEXT)
 RETURNS JSON AS $$
 DECLARE
@@ -306,10 +308,41 @@ DECLARE
 BEGIN
   INSERT INTO submissions (round_id, player_id, text)
   VALUES (p_round_id, p_player_id, p_text)
-  ON CONFLICT (round_id, player_id) DO UPDATE SET text = p_text
+  ON CONFLICT (round_id, player_id) DO UPDATE SET text = EXCLUDED.text
   RETURNING row_to_json(submissions.*) INTO v_submission;
 
+  PERFORM advance_round_if_complete(p_round_id);
+
   RETURN v_submission;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Move a round from 'submitting' to 'judging' when all expected
+-- submissions are in. Shared by submit_item and leave_room.
+CREATE OR REPLACE FUNCTION advance_round_if_complete(p_round_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  v_room_id TEXT;
+  v_judge_id UUID;
+  v_expected INTEGER;
+  v_submitted INTEGER;
+BEGIN
+  SELECT room_id, judge_id INTO v_room_id, v_judge_id
+  FROM rounds WHERE id = p_round_id AND phase = 'submitting';
+
+  IF v_room_id IS NULL THEN
+    RETURN; -- round not in submitting phase
+  END IF;
+
+  SELECT COUNT(*) INTO v_expected
+  FROM players WHERE room_id = v_room_id AND id != v_judge_id;
+
+  SELECT COUNT(*) INTO v_submitted
+  FROM submissions WHERE round_id = p_round_id;
+
+  IF v_expected > 0 AND v_submitted >= v_expected THEN
+    UPDATE rounds SET phase = 'judging' WHERE id = p_round_id AND phase = 'submitting';
+  END IF;
 END;
 $$ LANGUAGE plpgsql;
 

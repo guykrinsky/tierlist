@@ -176,36 +176,45 @@ export function useGameState(roomId: string, playerId: string | null) {
           }
         }
       )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, playerId, fetchGameData, supabase]);
+
+  // Per-round subscriptions, scoped with filters so events from other
+  // rooms' rounds can't leak into this game's state.
+  const currentRoundId = gameState.currentRound?.id ?? null;
+
+  useEffect(() => {
+    if (!currentRoundId) return;
+
+    const channel = supabase
+      .channel(`round:${currentRoundId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "submissions" },
+        { event: "INSERT", schema: "public", table: "submissions", filter: `round_id=eq.${currentRoundId}` },
         (payload) => {
-          // For submissions: update local state for live ordering
-          if (payload.eventType === "INSERT") {
-            const newSubmission = payload.new as Submission;
-            // If this is MY submission, I already updated locally - skip
-            if (newSubmission.player_id === playerId) {
-              return;
-            }
-            // Add new submission for live ordering view (both judge and players)
-            setGameState(prev => {
-              // Only add if not already present
-              const exists = prev.submissions.some(s => 
-                s.player_id === newSubmission.player_id
-              );
-              if (exists) return prev;
-              // Add full submission data for live ordering
-              return {
-                ...prev,
-                submissions: [...prev.submissions, newSubmission]
-              };
-            });
-          }
+          const newSubmission = payload.new as Submission;
+          // If this is MY submission, I already updated locally - skip
+          if (newSubmission.player_id === playerId) return;
+          setGameState(prev => {
+            // Only add if not already present
+            const exists = prev.submissions.some(s =>
+              s.player_id === newSubmission.player_id
+            );
+            if (exists) return prev;
+            return {
+              ...prev,
+              submissions: [...prev.submissions, newSubmission]
+            };
+          });
         }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "guesses" },
+        { event: "*", schema: "public", table: "guesses", filter: `round_id=eq.${currentRoundId}` },
         () => {
           // Guesses mean round is ending - fetch results
           fetchGameData();
@@ -213,7 +222,7 @@ export function useGameState(roomId: string, playerId: string | null) {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "secrets" },
+        { event: "INSERT", schema: "public", table: "secrets", filter: `round_id=eq.${currentRoundId}` },
         (payload) => {
           // Only fetch secrets for current player, not everyone
           const newSecret = payload.new as { player_id?: string };
@@ -227,7 +236,7 @@ export function useGameState(roomId: string, playerId: string | null) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, playerId, fetchGameData, supabase]);
+  }, [currentRoundId, playerId, fetchGameData, supabase]);
 
   // Leave room
   const leaveRoom = useCallback(async () => {
@@ -294,22 +303,10 @@ export function useGameState(roomId: string, playerId: string | null) {
         }));
         throw error;
       }
-
-      // Check if all players have submitted
-      const nonJudgePlayers = gameState.players.filter(
-        (p) => p.id !== gameState.currentRound?.judge_id
-      );
-      const submissionCount = gameState.submissions.length + 1;
-
-      if (submissionCount >= nonJudgePlayers.length) {
-        // Move to judging phase - this will trigger phase change for everyone
-        await supabase
-          .from("rounds")
-          .update({ phase: "judging" })
-          .eq("id", gameState.currentRound.id);
-      }
+      // The submit_item RPC advances the round to 'judging' once all
+      // non-judge players have submitted - no client-side check needed.
     },
-    [gameState, playerId, supabase]
+    [gameState.currentRound, playerId, supabase]
   );
 
   // Submit judge guesses
