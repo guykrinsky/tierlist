@@ -61,6 +61,12 @@ export default function HomePage() {
   const fetchActiveRooms = async () => {
     setIsLoadingRooms(true);
     try {
+      // Best-effort sweep of abandoned/empty rooms before listing
+      await supabase.rpc("cleanup_stale_rooms").then(
+        () => undefined,
+        () => undefined
+      );
+
       const { data: rooms, error } = await supabase
         .from("rooms")
         .select("id, name, host_id, status, current_round, created_at")
@@ -83,7 +89,8 @@ export default function HomePage() {
         })
       );
 
-      setActiveRooms(roomsWithCounts);
+      // A room can briefly have 0 players between cleanup runs - hide it
+      setActiveRooms(roomsWithCounts.filter((room) => room.player_count > 0));
     } catch (err) {
       console.error("Error fetching rooms:", err);
     } finally {
@@ -145,9 +152,10 @@ export default function HomePage() {
       router.push(`/room/${result.room.id}`);
     } catch (err) {
       console.error("Error joining room:", err);
+      const message = (err as { message?: string })?.message;
       toast({
-        title: "Error",
-        description: "Failed to join room",
+        title: "Couldn't join",
+        description: message || "Failed to join room",
         variant: "destructive",
       });
     } finally {
@@ -193,8 +201,8 @@ export default function HomePage() {
     },
     {
       icon: Target,
-      title: "Judge Guesses",
-      description: "The Judge tries to guess everyone's exact numbers",
+      title: "Judge Ranks",
+      description: "The Judge puts everyone's answers in order, lowest to highest",
       color: "green",
     },
   ];
@@ -535,21 +543,21 @@ export default function HomePage() {
                       <h3 className="text-xl font-bold text-white mb-4">Scoring System</h3>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-tierlist-red/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <Target className="w-4 h-4 text-tierlist-red" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-medium text-white text-sm">Correct Position</p>
+                            <p className="text-xs text-muted-foreground">+1 for that Player AND +1 for the Judge</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-lg bg-tierlist-blue/20 flex items-center justify-center shrink-0 mt-0.5">
                             <TrendingUp className="w-4 h-4 text-tierlist-blue" />
                           </div>
                           <div className="text-left">
                             <p className="font-medium text-white text-sm">Perfect Ordering</p>
-                            <p className="text-xs text-muted-foreground">Judge gets +1 if all positions correct</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-tierlist-red/20 flex items-center justify-center shrink-0 mt-0.5">
-                            <Target className="w-4 h-4 text-tierlist-red" />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-medium text-white text-sm">Exact Number Guess</p>
-                            <p className="text-xs text-muted-foreground">+1 for Judge AND +1 for Player</p>
+                            <p className="text-xs text-muted-foreground">Judge gets a +2 bonus for ranking everyone correctly</p>
                           </div>
                         </div>
                       </div>

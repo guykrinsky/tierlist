@@ -11,10 +11,8 @@ interface PlayerResult {
   secretNumber: number;
   submission: string;
   judgePositionGuess: number;
-  judgeNumberGuess: number | null;
   actualPosition: number;
   positionCorrect: boolean;
-  numberCorrect: boolean;
   playerPointsEarned: number;
   judgePointsEarned: number;
 }
@@ -97,7 +95,7 @@ export function ResultScreen({
                   </div>
                   <div>
                     <p className="text-green-400 font-bold">Perfect Ordering! 🎉</p>
-                    <p className="text-green-400/80 text-sm">Got everyone's position exactly right (+1 bonus)</p>
+                    <p className="text-green-400/80 text-sm">Got everyone's position exactly right (+2 bonus)</p>
                   </div>
                 </div>
               ) : (
@@ -155,7 +153,7 @@ export function ResultScreen({
                     {result.positionCorrect ? (
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/20 border border-green-500/30">
                         <Check className="w-3 h-3 text-green-400" />
-                        <span className="text-green-400 text-xs font-medium">Position ✓</span>
+                        <span className="text-green-400 text-xs font-medium">Position ✓ (+1 each)</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/20 border border-red-500/30">

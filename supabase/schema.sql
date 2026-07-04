@@ -1,5 +1,5 @@
 -- TIERLIST Game Database Schema
--- Run this in your Supabase SQL Editor
+-- Run this in your Supabase SQL Editor. Safe to re-run: the whole file is idempotent.
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -23,8 +23,11 @@ CREATE TABLE IF NOT EXISTS players (
   score INTEGER NOT NULL DEFAULT 0,
   is_judge BOOLEAN NOT NULL DEFAULT false,
   is_host BOOLEAN NOT NULL DEFAULT false,
+  is_bot BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE players ADD COLUMN IF NOT EXISTS is_bot BOOLEAN NOT NULL DEFAULT false;
 
 -- Rounds table
 CREATE TABLE IF NOT EXISTS rounds (
@@ -34,8 +37,12 @@ CREATE TABLE IF NOT EXISTS rounds (
   category TEXT NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT true,
   phase TEXT NOT NULL DEFAULT 'waiting' CHECK (phase IN ('waiting', 'submitting', 'judging', 'results', 'finished')),
+  scores_applied BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Columns added after initial release (no-ops on fresh installs)
+ALTER TABLE rounds ADD COLUMN IF NOT EXISTS scores_applied BOOLEAN NOT NULL DEFAULT false;
 
 -- Secrets table (player secret numbers)
 CREATE TABLE IF NOT EXISTS secrets (
@@ -83,6 +90,13 @@ ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE guesses ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies (Allow all for now - in production, you'd want more restrictive policies)
+DROP POLICY IF EXISTS "Allow all on rooms" ON rooms;
+DROP POLICY IF EXISTS "Allow all on players" ON players;
+DROP POLICY IF EXISTS "Allow all on rounds" ON rounds;
+DROP POLICY IF EXISTS "Allow all on secrets" ON secrets;
+DROP POLICY IF EXISTS "Allow all on submissions" ON submissions;
+DROP POLICY IF EXISTS "Allow all on guesses" ON guesses;
+
 CREATE POLICY "Allow all on rooms" ON rooms FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on players" ON players FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on rounds" ON rounds FOR ALL USING (true) WITH CHECK (true);
@@ -90,13 +104,45 @@ CREATE POLICY "Allow all on secrets" ON secrets FOR ALL USING (true) WITH CHECK 
 CREATE POLICY "Allow all on submissions" ON submissions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on guesses" ON guesses FOR ALL USING (true) WITH CHECK (true);
 
--- Enable Realtime for tables
-ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
-ALTER PUBLICATION supabase_realtime ADD TABLE players;
-ALTER PUBLICATION supabase_realtime ADD TABLE rounds;
-ALTER PUBLICATION supabase_realtime ADD TABLE secrets;
-ALTER PUBLICATION supabase_realtime ADD TABLE submissions;
-ALTER PUBLICATION supabase_realtime ADD TABLE guesses;
+-- Enable Realtime for tables (skip if already added)
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE players;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE rounds;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE secrets;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE submissions;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE guesses;
+  EXCEPTION WHEN OTHERS THEN
+    -- Table might already be in publication, skip
+  END;
+END $$;
 
 -- Function to generate a room code
 CREATE OR REPLACE FUNCTION generate_room_code()
@@ -159,13 +205,25 @@ DECLARE
 BEGIN
   -- Check if room exists and is in waiting status
   SELECT status INTO v_room_status FROM rooms WHERE id = p_room_id;
-  
+
   IF v_room_status IS NULL THEN
     RAISE EXCEPTION 'Room not found';
   END IF;
-  
+
   IF v_room_status != 'waiting' THEN
     RAISE EXCEPTION 'Game already started';
+  END IF;
+
+  IF (SELECT COUNT(*) FROM players WHERE room_id = p_room_id) >= 10 THEN
+    RAISE EXCEPTION 'Room is full';
+  END IF;
+
+  -- Duplicate names break judge rotation and make results ambiguous
+  IF EXISTS (
+    SELECT 1 FROM players
+    WHERE room_id = p_room_id AND LOWER(name) = LOWER(p_player_name)
+  ) THEN
+    RAISE EXCEPTION 'That name is already taken in this room';
   END IF;
 
   -- Create player
@@ -178,6 +236,175 @@ BEGIN
   SELECT row_to_json(p) INTO v_player FROM players p WHERE p.id = v_player_id;
 
   RETURN json_build_object('room', v_room, 'player', v_player);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to leave a room, keeping the room in a playable state:
+--   * last player out deletes the room (no more 0-member ghost rooms)
+--   * host leaving passes host to the longest-present player
+--   * judge leaving abandons the round and returns to category selection
+--     (deleting the judge cascades the round row via FK)
+--   * a submitter leaving mid-round advances the phase if everyone
+--     remaining has already submitted
+CREATE OR REPLACE FUNCTION leave_room(p_player_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  v_room_id TEXT;
+  v_was_host BOOLEAN;
+  v_active_round_id UUID;
+  v_was_judge BOOLEAN := false;
+  v_round_phase TEXT;
+  v_new_host UUID;
+BEGIN
+  SELECT room_id, is_host INTO v_room_id, v_was_host
+  FROM players WHERE id = p_player_id;
+
+  IF v_room_id IS NULL THEN
+    RETURN; -- already gone
+  END IF;
+
+  -- Capture active round info BEFORE the delete (judge deletion cascades the round)
+  SELECT id, judge_id = p_player_id, phase
+  INTO v_active_round_id, v_was_judge, v_round_phase
+  FROM rounds
+  WHERE room_id = v_room_id AND is_active = true
+  LIMIT 1;
+
+  DELETE FROM players WHERE id = p_player_id;
+
+  -- Last HUMAN out closes the room; bots don't keep a room alive
+  IF NOT EXISTS (
+    SELECT 1 FROM players WHERE room_id = v_room_id AND is_bot = false
+  ) THEN
+    DELETE FROM rooms WHERE id = v_room_id;
+    RETURN;
+  END IF;
+
+  -- Pass host to the longest-present remaining human
+  IF v_was_host THEN
+    SELECT id INTO v_new_host
+    FROM players WHERE room_id = v_room_id AND is_bot = false
+    ORDER BY created_at ASC LIMIT 1;
+
+    UPDATE players SET is_host = true WHERE id = v_new_host;
+    UPDATE rooms SET host_id = v_new_host::text WHERE id = v_room_id;
+  END IF;
+
+  IF v_active_round_id IS NOT NULL THEN
+    IF v_was_judge THEN
+      -- Round is gone (cascade); pick a new judge via category selection
+      UPDATE rooms SET status = 'category_selection' WHERE id = v_room_id;
+    ELSIF v_round_phase = 'submitting' THEN
+      PERFORM advance_round_if_complete(v_active_round_id);
+    END IF;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add a bot player to a waiting room (host action).
+CREATE OR REPLACE FUNCTION add_bot(p_room_id TEXT)
+RETURNS JSON AS $$
+DECLARE
+  v_names TEXT[] := ARRAY[
+    'Botrick', 'RoboRhea', 'Circuit Sam', 'Chip', 'Bleepzor',
+    'Data Dave', 'Gigabyte Gail', 'Servo', 'Nutsy Bolts', 'Turing Tina'
+  ];
+  v_name TEXT;
+  v_status TEXT;
+  v_player JSON;
+BEGIN
+  SELECT status INTO v_status FROM rooms WHERE id = p_room_id;
+
+  IF v_status IS NULL THEN
+    RAISE EXCEPTION 'Room not found';
+  END IF;
+
+  IF v_status != 'waiting' THEN
+    RAISE EXCEPTION 'Bots can only be added before the game starts';
+  END IF;
+
+  IF (SELECT COUNT(*) FROM players WHERE room_id = p_room_id) >= 10 THEN
+    RAISE EXCEPTION 'Room is full';
+  END IF;
+
+  -- Pick a random bot name not already used in this room
+  SELECT bot_name INTO v_name
+  FROM unnest(v_names) AS n(bot_name)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM players
+    WHERE room_id = p_room_id AND LOWER(players.name) = LOWER(bot_name)
+  )
+  ORDER BY random()
+  LIMIT 1;
+
+  IF v_name IS NULL THEN
+    RAISE EXCEPTION 'No bot names left';
+  END IF;
+
+  INSERT INTO players (room_id, name, is_bot)
+  VALUES (p_room_id, v_name, true)
+  RETURNING row_to_json(players.*) INTO v_player;
+
+  RETURN v_player;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Make every bot in the round submit an answer that hints at its secret
+-- number, like a human player would. Runs server-side so the judge's
+-- client never sees the secrets. Idempotent: bots that already submitted
+-- are skipped, so it's safe for the host client to call this repeatedly.
+CREATE OR REPLACE FUNCTION play_bot_turns(p_round_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  v_bot RECORD;
+  v_phrases TEXT[];
+  v_text TEXT;
+BEGIN
+  FOR v_bot IN
+    SELECT p.id, s.value
+    FROM players p
+    JOIN rounds r ON r.id = p_round_id AND r.room_id = p.room_id
+    JOIN secrets s ON s.round_id = p_round_id AND s.player_id = p.id
+    WHERE p.is_bot = true
+      AND r.phase = 'submitting'
+      AND NOT EXISTS (
+        SELECT 1 FROM submissions sub
+        WHERE sub.round_id = p_round_id AND sub.player_id = p.id
+      )
+  LOOP
+    v_phrases := CASE v_bot.value
+      WHEN 1 THEN ARRAY['the absolute worst one there is', 'the bottom of the barrel', 'the single worst pick imaginable']
+      WHEN 2 THEN ARRAY['a really bad one', 'something close to the worst', 'a truly awful choice']
+      WHEN 3 THEN ARRAY['a pretty weak one', 'a below-average pick', 'not the worst, but still bad']
+      WHEN 4 THEN ARRAY['a slightly disappointing one', 'a bit under mid', 'almost average, but worse']
+      WHEN 5 THEN ARRAY['a perfectly mid one', 'the most average option ever', 'dead middle of the pack']
+      WHEN 6 THEN ARRAY['a slightly above average one', 'decent, nothing special', 'just a notch over mid']
+      WHEN 7 THEN ARRAY['a genuinely good one', 'a solid, respectable pick', 'clearly above average']
+      WHEN 8 THEN ARRAY['a really good one', 'a great choice, honestly', 'near the top for sure']
+      WHEN 9 THEN ARRAY['an amazing one', 'almost the best there is', 'top shelf, just short of perfect']
+      ELSE ARRAY['the best one in existence', 'the undisputed number one', 'literal perfection']
+    END;
+
+    v_text := v_phrases[1 + floor(random() * array_length(v_phrases, 1))::int];
+
+    INSERT INTO submissions (round_id, player_id, text)
+    VALUES (p_round_id, v_bot.id, v_text)
+    ON CONFLICT (round_id, player_id) DO NOTHING;
+  END LOOP;
+
+  PERFORM advance_round_if_complete(p_round_id);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Best-effort cleanup called from the lobby: drop rooms that are older
+-- than a day or somehow ended up with no players.
+CREATE OR REPLACE FUNCTION cleanup_stale_rooms()
+RETURNS VOID AS $$
+BEGIN
+  DELETE FROM rooms WHERE created_at < NOW() - INTERVAL '24 hours';
+  DELETE FROM rooms r WHERE NOT EXISTS (
+    SELECT 1 FROM players p WHERE p.room_id = r.id
+  );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -197,7 +424,7 @@ DECLARE
 BEGIN
   -- Count non-judge players
   SELECT COUNT(*) INTO v_player_count FROM players WHERE room_id = p_room_id;
-  
+
   -- Check max 10 non-judge players (11 total with judge)
   IF v_player_count > 11 THEN
     RAISE EXCEPTION 'Too many players. Maximum 10 non-judge players allowed per round.';
@@ -216,14 +443,20 @@ BEGIN
   -- Reset all players' judge status
   UPDATE players SET is_judge = false WHERE room_id = p_room_id;
 
-  -- Select judge (rotate based on round number)
+  -- Select judge (rotate based on round number). Bots never judge, so
+  -- rotation runs over human players only - this is what makes solo
+  -- play against bots work: the lone human is always the judge.
   SELECT id INTO v_judge_id
   FROM (
     SELECT id, ROW_NUMBER() OVER (ORDER BY created_at) as rn
     FROM players
-    WHERE room_id = p_room_id
+    WHERE room_id = p_room_id AND is_bot = false
   ) sub
-  WHERE rn = ((v_current_round - 1) % (SELECT COUNT(*) FROM players WHERE room_id = p_room_id)) + 1;
+  WHERE rn = ((v_current_round - 1) % (SELECT COUNT(*) FROM players WHERE room_id = p_room_id AND is_bot = false)) + 1;
+
+  IF v_judge_id IS NULL THEN
+    RAISE EXCEPTION 'No human players left to judge';
+  END IF;
 
   -- Set the judge
   UPDATE players SET is_judge = true WHERE id = v_judge_id;
@@ -259,7 +492,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to submit an item
+-- Function to submit an item.
+-- Also advances the round to 'judging' once every non-judge player has
+-- submitted, so the phase transition is authoritative and race-free.
 CREATE OR REPLACE FUNCTION submit_item(p_round_id UUID, p_player_id UUID, p_text TEXT)
 RETURNS JSON AS $$
 DECLARE
@@ -267,24 +502,85 @@ DECLARE
 BEGIN
   INSERT INTO submissions (round_id, player_id, text)
   VALUES (p_round_id, p_player_id, p_text)
-  ON CONFLICT (round_id, player_id) DO UPDATE SET text = p_text
+  ON CONFLICT (round_id, player_id) DO UPDATE SET text = EXCLUDED.text
   RETURNING row_to_json(submissions.*) INTO v_submission;
+
+  PERFORM advance_round_if_complete(p_round_id);
 
   RETURN v_submission;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to submit judge guesses
+-- Move a round from 'submitting' to 'judging' when all expected
+-- submissions are in. Shared by submit_item and leave_room.
+CREATE OR REPLACE FUNCTION advance_round_if_complete(p_round_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  v_room_id TEXT;
+  v_judge_id UUID;
+  v_expected INTEGER;
+  v_submitted INTEGER;
+BEGIN
+  SELECT room_id, judge_id INTO v_room_id, v_judge_id
+  FROM rounds WHERE id = p_round_id AND phase = 'submitting';
+
+  IF v_room_id IS NULL THEN
+    RETURN; -- round not in submitting phase
+  END IF;
+
+  SELECT COUNT(*) INTO v_expected
+  FROM players WHERE room_id = v_room_id AND id != v_judge_id;
+
+  SELECT COUNT(*) INTO v_submitted
+  FROM submissions WHERE round_id = p_round_id;
+
+  IF v_expected > 0 AND v_submitted >= v_expected THEN
+    UPDATE rounds SET phase = 'judging' WHERE id = p_round_id AND phase = 'submitting';
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to submit judge guesses and score the round in one shot.
+--
+-- Scoring rules:
+--   * Player placed at their exactly-correct position: player +1, judge +1
+--   * Judge orders EVERYONE correctly: judge +2 bonus
+--
+-- Scoring is idempotent (rounds.scores_applied guards against retries and
+-- double-clicks) and the game is marked finished when someone reaches the
+-- room's winning score.
 CREATE OR REPLACE FUNCTION submit_guesses(p_round_id UUID, p_judge_id UUID, p_guesses JSON)
 RETURNS VOID AS $$
 DECLARE
   v_guess JSON;
+  v_room_id TEXT;
+  v_scores_applied BOOLEAN;
+  v_row RECORD;
+  v_player_count INTEGER := 0;
+  v_correct_count INTEGER := 0;
+  v_judge_points INTEGER;
+  v_winning_score INTEGER;
 BEGIN
-  -- Delete existing guesses for this round
+  SELECT room_id, scores_applied INTO v_room_id, v_scores_applied
+  FROM rounds WHERE id = p_round_id;
+
+  IF v_room_id IS NULL THEN
+    RAISE EXCEPTION 'Round not found';
+  END IF;
+
+  IF v_scores_applied THEN
+    RETURN; -- already scored; ignore duplicate submissions
+  END IF;
+
+  -- Replace any existing guesses for this round
   DELETE FROM guesses WHERE round_id = p_round_id AND judge_id = p_judge_id;
 
-  -- Insert new guesses
   FOR v_guess IN SELECT * FROM json_array_elements(p_guesses) LOOP
+    -- Skip players who left the room mid-judging
+    CONTINUE WHEN NOT EXISTS (
+      SELECT 1 FROM players WHERE id = (v_guess->>'player_id')::UUID
+    );
+
     INSERT INTO guesses (round_id, judge_id, player_id, position_guess, number_guess)
     VALUES (
       p_round_id,
@@ -295,116 +591,44 @@ BEGIN
     );
   END LOOP;
 
-  -- Update round phase to results
-  UPDATE rounds SET phase = 'results' WHERE id = p_round_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to calculate and apply round results
-CREATE OR REPLACE FUNCTION calculate_round_results(p_round_id UUID)
-RETURNS JSON AS $$
-DECLARE
-  v_results JSON;
-  v_player RECORD;
-  v_secret RECORD;
-  v_guess RECORD;
-  v_actual_positions JSON;
-  v_position INTEGER;
-  v_player_points INTEGER;
-  v_judge_points INTEGER := 0;
-  v_judge_id UUID;
-  v_room_id TEXT;
-  v_all_positions_correct BOOLEAN := TRUE;
-  v_player_count INTEGER := 0;
-BEGIN
-  -- Get judge_id and room_id
-  SELECT judge_id, room_id INTO v_judge_id, v_room_id FROM rounds WHERE id = p_round_id;
-
-  -- Build actual positions based on secret values
-  WITH ranked AS (
-    SELECT 
-      s.player_id,
-      s.value,
-      ROW_NUMBER() OVER (ORDER BY s.value ASC) as actual_position
-    FROM secrets s
-    WHERE s.round_id = p_round_id
-  )
-  SELECT json_agg(json_build_object(
-    'player_id', ranked.player_id,
-    'value', ranked.value,
-    'actual_position', ranked.actual_position
-  )) INTO v_actual_positions
-  FROM ranked;
-
-  -- Calculate points for each player
-  FOR v_player IN 
-    SELECT p.id, p.name 
-    FROM players p 
-    WHERE p.room_id = v_room_id AND p.id != v_judge_id 
+  -- Compare guessed positions against the true ordering by secret number.
+  -- A player the judge skipped counts as incorrect (LEFT JOIN + COALESCE).
+  FOR v_row IN
+    WITH actual AS (
+      SELECT player_id, ROW_NUMBER() OVER (ORDER BY value ASC) AS pos
+      FROM secrets
+      WHERE round_id = p_round_id
+    )
+    SELECT a.player_id, COALESCE(g.position_guess = a.pos, false) AS is_correct
+    FROM actual a
+    LEFT JOIN guesses g ON g.round_id = p_round_id AND g.player_id = a.player_id
   LOOP
-    v_player_points := 0;
     v_player_count := v_player_count + 1;
-    
-    -- Get secret and guess for this player
-    SELECT value INTO v_secret FROM secrets WHERE round_id = p_round_id AND player_id = v_player.id;
-    SELECT position_guess, number_guess INTO v_guess FROM guesses WHERE round_id = p_round_id AND player_id = v_player.id;
-    
-    -- Get actual position
-    SELECT actual_position INTO v_position
-    FROM json_to_recordset(v_actual_positions) AS x(player_id UUID, value INTEGER, actual_position INTEGER)
-    WHERE x.player_id = v_player.id;
-
-    -- Check if position is correct (for full ordering check)
-    IF v_guess.position_guess != v_position THEN
-      v_all_positions_correct := FALSE;
+    IF v_row.is_correct THEN
+      v_correct_count := v_correct_count + 1;
+      UPDATE players SET score = score + 1 WHERE id = v_row.player_id;
     END IF;
-
-    -- Number correct → Both Judge +1 AND Player +1
-    IF v_guess.number_guess IS NOT NULL AND v_guess.number_guess = v_secret.value THEN
-      v_player_points := v_player_points + 1;
-      v_judge_points := v_judge_points + 1;
-    END IF;
-
-    -- Update player score
-    UPDATE players SET score = score + v_player_points WHERE id = v_player.id;
   END LOOP;
 
-  -- Judge gets +1 only if ALL positions are correct (full ordering bonus)
-  IF v_all_positions_correct AND v_player_count > 0 THEN
-    v_judge_points := v_judge_points + 1;
+  v_judge_points := v_correct_count;
+  IF v_player_count > 0 AND v_correct_count = v_player_count THEN
+    v_judge_points := v_judge_points + 2; -- perfect ordering bonus
   END IF;
+  UPDATE players SET score = score + v_judge_points WHERE id = p_judge_id;
 
-  -- Update judge score
-  UPDATE players SET score = score + v_judge_points WHERE id = v_judge_id;
+  UPDATE rounds SET phase = 'results', scores_applied = true WHERE id = p_round_id;
 
-  -- Keep the round active with 'results' phase so UI can display results
-  -- The round will be deactivated when the next round starts
-  -- (start_round already handles: UPDATE rounds SET is_active = false, phase = 'finished')
-
-  RETURN v_actual_positions;
+  -- End the game when someone reaches the winning score
+  SELECT winning_score INTO v_winning_score FROM rooms WHERE id = v_room_id;
+  IF EXISTS (
+    SELECT 1 FROM players WHERE room_id = v_room_id AND score >= v_winning_score
+  ) THEN
+    UPDATE rooms SET status = 'finished' WHERE id = v_room_id;
+  END IF;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to check for winner
-CREATE OR REPLACE FUNCTION check_winner(p_room_id TEXT)
-RETURNS JSON AS $$
-DECLARE
-  v_winner JSON;
-  v_winning_score INTEGER;
-BEGIN
-  SELECT winning_score INTO v_winning_score FROM rooms WHERE id = p_room_id;
-
-  SELECT row_to_json(p) INTO v_winner
-  FROM players p
-  WHERE p.room_id = p_room_id AND p.score >= v_winning_score
-  ORDER BY p.score DESC
-  LIMIT 1;
-
-  IF v_winner IS NOT NULL THEN
-    UPDATE rooms SET status = 'finished' WHERE id = p_room_id;
-  END IF;
-
-  RETURN v_winner;
-END;
-$$ LANGUAGE plpgsql;
-
+-- Superseded functions: scoring and winner detection now live inside
+-- submit_guesses. Drop them so stale copies can't be called.
+DROP FUNCTION IF EXISTS calculate_round_results(UUID);
+DROP FUNCTION IF EXISTS check_winner(TEXT);

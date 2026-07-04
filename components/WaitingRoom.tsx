@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Navigation } from "@/components/Navigation";
-import { Copy, CheckCircle2, Users, Play, Loader2, LogOut, Share2, Sparkles } from "lucide-react";
+import { Copy, CheckCircle2, Users, Loader2, LogOut, Share2, Sparkles, Bot, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import type { Player, Room } from "@/types";
@@ -16,6 +16,8 @@ interface WaitingRoomProps {
   currentPlayer: Player;
   onStartGame: () => Promise<void>;
   onLeaveRoom: () => Promise<void>;
+  onAddBot: () => Promise<void>;
+  onRemoveBot: (botId: string) => Promise<void>;
 }
 
 export function WaitingRoom({
@@ -24,10 +26,40 @@ export function WaitingRoom({
   currentPlayer,
   onStartGame,
   onLeaveRoom,
+  onAddBot,
+  onRemoveBot,
 }: WaitingRoomProps) {
   const [copied, setCopied] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isAddingBot, setIsAddingBot] = useState(false);
+
+  const handleAddBot = async () => {
+    setIsAddingBot(true);
+    try {
+      await onAddBot();
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to add bot",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingBot(false);
+    }
+  };
+
+  const handleRemoveBot = async (botId: string) => {
+    try {
+      await onRemoveBot(botId);
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to remove bot",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleLeaveRoom = async () => {
     setIsLeaving(true);
@@ -187,10 +219,19 @@ export function WaitingRoom({
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="status-dot online" />
+                      {player.is_bot ? (
+                        <Bot className="w-4 h-4 text-purple-400 shrink-0" />
+                      ) : (
+                        <div className="status-dot online" />
+                      )}
                       <span className="font-medium text-white text-sm">{player.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      {player.is_bot && (
+                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-purple-500/20 text-purple-400 font-medium">
+                          BOT
+                        </span>
+                      )}
                       {player.is_host && (
                         <span className="px-2 py-0.5 text-[10px] rounded-full bg-tierlist-red/20 text-tierlist-red font-medium">
                           HOST
@@ -201,10 +242,41 @@ export function WaitingRoom({
                           YOU
                         </span>
                       )}
+                      {player.is_bot && currentPlayer.is_host && (
+                        <button
+                          onClick={() => handleRemoveBot(player.id)}
+                          className="p-1 rounded-full text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                          aria-label={`Remove ${player.name}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 ))}
               </div>
+
+              {/* Add Bot (host only) */}
+              {currentPlayer.is_host && (
+                <Button
+                  variant="outline"
+                  onClick={handleAddBot}
+                  disabled={isAddingBot || players.length >= maxPlayers}
+                  className="w-full mt-3 border-dashed border-purple-500/40 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                >
+                  {isAddingBot ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Bot className="w-4 h-4 mr-2" />
+                  )}
+                  Add Bot Player
+                </Button>
+              )}
+              {currentPlayer.is_host && players.length < minPlayers && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Playing alone? Add {minPlayers - players.length} bot{minPlayers - players.length !== 1 ? "s" : ""} and you&apos;ll be the judge every round.
+                </p>
+              )}
             </CardContent>
           </Card>
 

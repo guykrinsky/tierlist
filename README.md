@@ -8,22 +8,22 @@ A multiplayer party game where players try to fool the judge by picking items th
 
 ## 🎯 How to Play
 
-1. **Create or Join a Room** - One player creates a room and shares the code with friends
+1. **Create or Join a Room** - One player creates a room and shares the code with friends (or adds bot players to fill seats)
 2. **Judge Picks Category** - Each round, one player becomes the Judge and picks a category (e.g., "Foods That Slap at 3 AM")
 3. **Players Get Unique Numbers** - Non-judge players receive a unique number from 1-10 (no duplicates!)
 4. **Submit Your Item** - Pick something from the category that matches your number (1 = worst, 10 = best)
 5. **Watch Live Ordering** - As players submit, non-judges see the live sorted list update in real-time
-6. **Judge Guesses** - The Judge orders players from lowest to highest and tries to guess their exact numbers
-7. **Score Points** - Players earn points when judge guesses their number correctly!
+6. **Judge Ranks** - The Judge puts everyone's answers in order from lowest to highest
+7. **Score Points** - You earn a point every time the Judge places you at your true position!
 
 ## 🏆 Scoring
 
-The Judge guesses each player's **position** (rank low→high) and can also guess their **exact number**.
+The Judge ranks each player's answer by **position** (lowest number → highest number).
 
 | Action | Points |
 |--------|--------|
-| Judge gets **ALL positions correct** | Judge +1 (one-time bonus) |
-| Judge guesses **exact number correct** | Judge +1 AND Player +1 |
+| Judge places a player at their **correct position** | Player +1 AND Judge +1 |
+| Judge gets **ALL positions correct** | Judge +2 bonus |
 
 **First to 10 points wins!**
 
@@ -32,6 +32,7 @@ The Judge guesses each player's **position** (rank low→high) and can also gues
 ## ✨ Features
 
 - 🎲 **250+ Categories** - From "Cereal Mascots You'd Trust with Your Life" to "Foods That Look Disgusting But Slap"
+- 🤖 **Bot Players** - Short on friends? The host can add bots that answer with number-flavored hints. Add two bots and you can even play solo as the permanent judge!
 - 🃏 **Joker Category** - Judge can create custom categories
 - ⏱️ **60-Second Timer** - Keep the game moving
 - 🎵 **Background Music** - Add your own theme song
@@ -59,6 +60,8 @@ npm install
 1. Create a new project at [supabase.com](https://supabase.com)
 2. Go to **SQL Editor** and run the contents of `supabase/schema.sql`
 3. Go to **Settings → API** and copy your credentials
+
+> ♻️ **Updating?** `supabase/schema.sql` is idempotent — whenever you pull a version of the game that changed it, just re-run the whole file in the SQL Editor.
 
 ### 3. Configure Environment
 

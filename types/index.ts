@@ -18,6 +18,7 @@ export interface Player {
   score: number;
   is_judge: boolean;
   is_host: boolean;
+  is_bot: boolean;
   created_at: string;
 }
 
@@ -28,6 +29,7 @@ export interface Round {
   category: string;
   is_active: boolean;
   phase: RoundPhase;
+  scores_applied: boolean;
   created_at: string;
 }
 
@@ -92,10 +94,8 @@ export interface RoundResult {
   secretNumber: number;
   submission: string;
   judgePositionGuess: number;
-  judgeNumberGuess: number | null;
   actualPosition: number;
   positionCorrect: boolean;
-  numberCorrect: boolean;
   playerPointsEarned: number;
   judgePointsEarned: number;
 }

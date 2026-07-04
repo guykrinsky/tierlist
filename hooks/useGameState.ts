@@ -14,18 +14,6 @@ import type {
   RoundPhase,
 } from "@/types";
 
-// Debounce helper
-function debounce<T extends (...args: unknown[]) => unknown>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
-  return (...args: Parameters<T>) => {
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
-
 export function useGameState(roomId: string, playerId: string | null) {
   const [gameState, setGameState] = useState<GameState>({
     room: null,
@@ -145,11 +133,6 @@ export function useGameState(roomId: string, playerId: string | null) {
     }
   }, [roomId, playerId, supabase]);
 
-  // Keep track of debounced fetch
-  const debouncedFetchRef = useRef<ReturnType<typeof debounce> | null>(null);
-
-  // Track submission count locally to avoid unnecessary re-renders
-  const submissionCountRef = useRef(0);
   const currentPhaseRef = useRef<string | null>(null);
 
   // Subscribe to realtime updates - OPTIMIZED to prevent unnecessary refreshes
@@ -193,38 +176,45 @@ export function useGameState(roomId: string, playerId: string | null) {
           }
         }
       )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, playerId, fetchGameData, supabase]);
+
+  // Per-round subscriptions, scoped with filters so events from other
+  // rooms' rounds can't leak into this game's state.
+  const currentRoundId = gameState.currentRound?.id ?? null;
+
+  useEffect(() => {
+    if (!currentRoundId) return;
+
+    const channel = supabase
+      .channel(`round:${currentRoundId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "submissions" },
+        { event: "INSERT", schema: "public", table: "submissions", filter: `round_id=eq.${currentRoundId}` },
         (payload) => {
-          // For submissions: update local state for live ordering
-          if (payload.eventType === "INSERT") {
-            const newSubmission = payload.new as Submission;
-            // If this is MY submission, I already updated locally - skip
-            if (newSubmission.player_id === playerId) {
-              return;
-            }
-            // Add new submission for live ordering view (both judge and players)
-            setGameState(prev => {
-              // Only add if not already present
-              const exists = prev.submissions.some(s => 
-                s.player_id === newSubmission.player_id
-              );
-              if (exists) return prev;
-              
-              submissionCountRef.current = prev.submissions.length + 1;
-              // Add full submission data for live ordering
-              return {
-                ...prev,
-                submissions: [...prev.submissions, newSubmission]
-              };
-            });
-          }
+          const newSubmission = payload.new as Submission;
+          // If this is MY submission, I already updated locally - skip
+          if (newSubmission.player_id === playerId) return;
+          setGameState(prev => {
+            // Only add if not already present
+            const exists = prev.submissions.some(s =>
+              s.player_id === newSubmission.player_id
+            );
+            if (exists) return prev;
+            return {
+              ...prev,
+              submissions: [...prev.submissions, newSubmission]
+            };
+          });
         }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "guesses" },
+        { event: "*", schema: "public", table: "guesses", filter: `round_id=eq.${currentRoundId}` },
         () => {
           // Guesses mean round is ending - fetch results
           fetchGameData();
@@ -232,7 +222,7 @@ export function useGameState(roomId: string, playerId: string | null) {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "secrets" },
+        { event: "INSERT", schema: "public", table: "secrets", filter: `round_id=eq.${currentRoundId}` },
         (payload) => {
           // Only fetch secrets for current player, not everyone
           const newSecret = payload.new as { player_id?: string };
@@ -246,16 +236,16 @@ export function useGameState(roomId: string, playerId: string | null) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, playerId, fetchGameData, supabase]);
+  }, [currentRoundId, playerId, fetchGameData, supabase]);
 
-  // Leave room
+  // Leave room. The RPC reassigns the host, recovers the round if the
+  // judge left, and deletes the room when the last player leaves.
   const leaveRoom = useCallback(async () => {
     if (!playerId) return;
 
-    const { error } = await supabase
-      .from("players")
-      .delete()
-      .eq("id", playerId);
+    const { error } = await supabase.rpc("leave_room", {
+      p_player_id: playerId,
+    });
 
     if (error) {
       console.error("Error leaving room:", error);
@@ -313,31 +303,19 @@ export function useGameState(roomId: string, playerId: string | null) {
         }));
         throw error;
       }
-
-      // Check if all players have submitted
-      const nonJudgePlayers = gameState.players.filter(
-        (p) => p.id !== gameState.currentRound?.judge_id
-      );
-      const submissionCount = gameState.submissions.length + 1;
-
-      if (submissionCount >= nonJudgePlayers.length) {
-        // Move to judging phase - this will trigger phase change for everyone
-        await supabase
-          .from("rounds")
-          .update({ phase: "judging" })
-          .eq("id", gameState.currentRound.id);
-      }
+      // The submit_item RPC advances the round to 'judging' once all
+      // non-judge players have submitted - no client-side check needed.
     },
-    [gameState, playerId, supabase]
+    [gameState.currentRound, playerId, supabase]
   );
 
-  // Submit judge guesses
+  // Submit judge guesses; the RPC also scores the round and marks the
+  // game finished when someone reaches the winning score.
   const submitGuesses = useCallback(
     async (
       guesses: Array<{
         player_id: string;
         position_guess: number;
-        number_guess: number | null;
       }>
     ) => {
       if (!gameState.currentRound || !playerId) return;
@@ -355,20 +333,6 @@ export function useGameState(roomId: string, playerId: string | null) {
     },
     [gameState.currentRound, playerId, supabase]
   );
-
-  // Calculate and apply round results
-  const calculateResults = useCallback(async () => {
-    if (!gameState.currentRound) return;
-
-    const { error } = await supabase.rpc("calculate_round_results", {
-      p_round_id: gameState.currentRound.id,
-    });
-
-    if (error) {
-      console.error("Error calculating results:", error);
-      throw error;
-    }
-  }, [gameState.currentRound, supabase]);
 
   // Start next round with category
   const nextRound = useCallback(async (category: string) => {
@@ -400,19 +364,63 @@ export function useGameState(roomId: string, playerId: string | null) {
       .eq("id", roomId);
   }, [roomId, gameState.currentRound, supabase]);
 
-  // Check for winner
-  const checkWinner = useCallback(async () => {
-    const { data, error } = await supabase.rpc("check_winner", {
-      p_room_id: roomId,
-    });
-
+  // Add a bot player (host action, waiting room only)
+  const addBot = useCallback(async () => {
+    const { error } = await supabase.rpc("add_bot", { p_room_id: roomId });
     if (error) {
-      console.error("Error checking winner:", error);
-      return null;
+      console.error("Error adding bot:", error);
+      throw error;
     }
-
-    return data as Player | null;
   }, [roomId, supabase]);
+
+  // Remove a bot player (host action)
+  const removeBot = useCallback(async (botId: string) => {
+    const { error } = await supabase
+      .from("players")
+      .delete()
+      .eq("id", botId)
+      .eq("is_bot", true);
+    if (error) {
+      console.error("Error removing bot:", error);
+      throw error;
+    }
+  }, [supabase]);
+
+  // Bots don't have clients, so the host's client drives their turns:
+  // once per round, after a human-feeling delay, ask the server to
+  // submit answers for all bots. play_bot_turns is idempotent, keeps
+  // secrets server-side, and advances the phase when everyone is in.
+  const botTurnRoundRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const round = gameState.currentRound;
+    if (!round || round.phase !== "submitting") return;
+    if (!gameState.currentPlayer?.is_host) return;
+
+    const hasPendingBots = gameState.players.some(
+      (p) =>
+        p.is_bot &&
+        p.id !== round.judge_id &&
+        !gameState.submissions.some((s) => s.player_id === p.id)
+    );
+    if (!hasPendingBots) return;
+
+    if (botTurnRoundRef.current === round.id) return;
+    botTurnRoundRef.current = round.id;
+
+    // No cleanup on purpose: effect re-runs (new submissions arriving)
+    // must not cancel the pending bot turn.
+    setTimeout(() => {
+      supabase
+        .rpc("play_bot_turns", { p_round_id: round.id })
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error playing bot turns:", error);
+            botTurnRoundRef.current = null; // allow a retry
+          }
+        });
+    }, 2000 + Math.random() * 3000);
+  }, [gameState.currentRound, gameState.currentPlayer, gameState.players, gameState.submissions, supabase]);
 
   // Reset game for new round
   const resetGame = useCallback(async () => {
@@ -435,12 +443,12 @@ export function useGameState(roomId: string, playerId: string | null) {
     startGame,
     submitItem,
     submitGuesses,
-    calculateResults,
     nextRound,
     prepareNextRound,
-    checkWinner,
     resetGame,
     leaveRoom,
+    addBot,
+    removeBot,
     refetch: fetchGameData,
   };
 }

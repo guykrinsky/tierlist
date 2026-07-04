@@ -25,7 +25,6 @@ interface PlayerGuess {
   playerId: string;
   playerName: string;
   submission: string;
-  numberGuess: number | null;
 }
 
 export default function RoomPage() {
@@ -49,20 +48,25 @@ export default function RoomPage() {
     startGame,
     submitItem,
     submitGuesses,
-    calculateResults,
     nextRound,
     prepareNextRound,
     resetGame,
     leaveRoom,
+    addBot,
+    removeBot,
   } = useGameState(roomId, playerId);
 
-  const getNextJudgeName = () => {
-    const sortedPlayers = [...players].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
+  // Mirrors the judge rotation in the start_round SQL function:
+  // humans only, ordered by join time
+  const getNextJudge = () => {
+    const sortedHumans = players
+      .filter((p) => !p.is_bot)
+      .sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    if (sortedHumans.length === 0) return null;
     const currentRoundNum = room?.current_round || 0;
-    const nextJudgeIndex = currentRoundNum % sortedPlayers.length;
-    return sortedPlayers[nextJudgeIndex]?.name || "";
+    return sortedHumans[currentRoundNum % sortedHumans.length] ?? null;
   };
 
   const [playerGuesses, setPlayerGuesses] = useState<PlayerGuess[]>([]);
@@ -77,7 +81,6 @@ export default function RoomPage() {
           playerId: player.id,
           playerName: player.name,
           submission: submission?.text || "",
-          numberGuess: null,
         };
       });
       setPlayerGuesses(initialGuesses);
@@ -120,36 +123,6 @@ export default function RoomPage() {
       await submitItem(text);
     } catch {
       toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
-    }
-  };
-
-  const handleGuessChange = (playerId: string, numberGuess: number | null) => {
-    setPlayerGuesses((prev) =>
-      prev.map((p) => (p.playerId === playerId ? { ...p, numberGuess } : p))
-    );
-  };
-
-  const handleSubmitGuesses = async () => {
-    setIsSubmittingGuesses(true);
-    try {
-      const sortedByGuess = [...playerGuesses].sort((a, b) => {
-        if (a.numberGuess === null && b.numberGuess === null) return 0;
-        if (a.numberGuess === null) return 1;
-        if (b.numberGuess === null) return -1;
-        return a.numberGuess - b.numberGuess;
-      });
-
-      const guessesData = playerGuesses.map((p) => {
-        const position = sortedByGuess.findIndex((sp) => sp.playerId === p.playerId) + 1;
-        return { player_id: p.playerId, position_guess: position, number_guess: p.numberGuess };
-      });
-
-      await submitGuesses(guessesData);
-      await calculateResults();
-    } catch {
-      toast({ title: "Error", description: "Failed to submit guesses", variant: "destructive" });
-    } finally {
-      setIsSubmittingGuesses(false);
     }
   };
 
@@ -230,14 +203,17 @@ export default function RoomPage() {
         currentPlayer={currentPlayer}
         onStartGame={handleStartGame}
         onLeaveRoom={handleLeaveRoom}
+        onAddBot={addBot}
+        onRemoveBot={removeBot}
       />
     );
   }
 
   // Category Selection
   if (room.status === "category_selection" && currentPlayer) {
-    const nextJudgeName = getNextJudgeName();
-    const isNextJudge = currentPlayer.name === nextJudgeName;
+    const nextJudge = getNextJudge();
+    const nextJudgeName = nextJudge?.name || "";
+    const isNextJudge = currentPlayer.id === nextJudge?.id;
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
         <motion.div
@@ -464,13 +440,18 @@ export default function RoomPage() {
                   positionGuess: playerGuesses.findIndex(pg => pg.playerId === p.playerId) + 1,
                 }))}
                 onRankingSubmit={async (rankings) => {
-                  const guessesData = rankings.map((ranking) => ({
-                    player_id: ranking.playerId,
-                    position_guess: ranking.positionGuess,
-                    number_guess: null, // No number guessing for judge
-                  }));
-                  await submitGuesses(guessesData);
-                  await calculateResults();
+                  setIsSubmittingGuesses(true);
+                  try {
+                    const guessesData = rankings.map((ranking) => ({
+                      player_id: ranking.playerId,
+                      position_guess: ranking.positionGuess,
+                    }));
+                    await submitGuesses(guessesData);
+                  } catch {
+                    toast({ title: "Error", description: "Failed to submit rankings", variant: "destructive" });
+                  } finally {
+                    setIsSubmittingGuesses(false);
+                  }
                 }}
                 isSubmitting={isSubmittingGuesses}
               />
