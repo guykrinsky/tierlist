@@ -61,6 +61,12 @@ export default function HomePage() {
   const fetchActiveRooms = async () => {
     setIsLoadingRooms(true);
     try {
+      // Best-effort sweep of abandoned/empty rooms before listing
+      await supabase.rpc("cleanup_stale_rooms").then(
+        () => undefined,
+        () => undefined
+      );
+
       const { data: rooms, error } = await supabase
         .from("rooms")
         .select("id, name, host_id, status, current_round, created_at")
@@ -83,7 +89,8 @@ export default function HomePage() {
         })
       );
 
-      setActiveRooms(roomsWithCounts);
+      // A room can briefly have 0 players between cleanup runs - hide it
+      setActiveRooms(roomsWithCounts.filter((room) => room.player_count > 0));
     } catch (err) {
       console.error("Error fetching rooms:", err);
     } finally {
@@ -145,9 +152,10 @@ export default function HomePage() {
       router.push(`/room/${result.room.id}`);
     } catch (err) {
       console.error("Error joining room:", err);
+      const message = (err as { message?: string })?.message;
       toast({
-        title: "Error",
-        description: "Failed to join room",
+        title: "Couldn't join",
+        description: message || "Failed to join room",
         variant: "destructive",
       });
     } finally {

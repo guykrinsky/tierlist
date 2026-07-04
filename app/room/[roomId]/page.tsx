@@ -54,13 +54,14 @@ export default function RoomPage() {
     leaveRoom,
   } = useGameState(roomId, playerId);
 
-  const getNextJudgeName = () => {
+  // Mirrors the judge rotation in the start_round SQL function
+  const getNextJudge = () => {
     const sortedPlayers = [...players].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
+    if (sortedPlayers.length === 0) return null;
     const currentRoundNum = room?.current_round || 0;
-    const nextJudgeIndex = currentRoundNum % sortedPlayers.length;
-    return sortedPlayers[nextJudgeIndex]?.name || "";
+    return sortedPlayers[currentRoundNum % sortedPlayers.length] ?? null;
   };
 
   const [playerGuesses, setPlayerGuesses] = useState<PlayerGuess[]>([]);
@@ -203,8 +204,9 @@ export default function RoomPage() {
 
   // Category Selection
   if (room.status === "category_selection" && currentPlayer) {
-    const nextJudgeName = getNextJudgeName();
-    const isNextJudge = currentPlayer.name === nextJudgeName;
+    const nextJudge = getNextJudge();
+    const nextJudgeName = nextJudge?.name || "";
+    const isNextJudge = currentPlayer.id === nextJudge?.id;
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
         <motion.div

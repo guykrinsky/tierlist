@@ -211,6 +211,18 @@ BEGIN
     RAISE EXCEPTION 'Game already started';
   END IF;
 
+  IF (SELECT COUNT(*) FROM players WHERE room_id = p_room_id) >= 10 THEN
+    RAISE EXCEPTION 'Room is full';
+  END IF;
+
+  -- Duplicate names break judge rotation and make results ambiguous
+  IF EXISTS (
+    SELECT 1 FROM players
+    WHERE room_id = p_room_id AND LOWER(name) = LOWER(p_player_name)
+  ) THEN
+    RAISE EXCEPTION 'That name is already taken in this room';
+  END IF;
+
   -- Create player
   INSERT INTO players (room_id, name)
   VALUES (p_room_id, p_player_name)
@@ -221,6 +233,78 @@ BEGIN
   SELECT row_to_json(p) INTO v_player FROM players p WHERE p.id = v_player_id;
 
   RETURN json_build_object('room', v_room, 'player', v_player);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to leave a room, keeping the room in a playable state:
+--   * last player out deletes the room (no more 0-member ghost rooms)
+--   * host leaving passes host to the longest-present player
+--   * judge leaving abandons the round and returns to category selection
+--     (deleting the judge cascades the round row via FK)
+--   * a submitter leaving mid-round advances the phase if everyone
+--     remaining has already submitted
+CREATE OR REPLACE FUNCTION leave_room(p_player_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  v_room_id TEXT;
+  v_was_host BOOLEAN;
+  v_active_round_id UUID;
+  v_was_judge BOOLEAN := false;
+  v_round_phase TEXT;
+  v_new_host UUID;
+BEGIN
+  SELECT room_id, is_host INTO v_room_id, v_was_host
+  FROM players WHERE id = p_player_id;
+
+  IF v_room_id IS NULL THEN
+    RETURN; -- already gone
+  END IF;
+
+  -- Capture active round info BEFORE the delete (judge deletion cascades the round)
+  SELECT id, judge_id = p_player_id, phase
+  INTO v_active_round_id, v_was_judge, v_round_phase
+  FROM rounds
+  WHERE room_id = v_room_id AND is_active = true
+  LIMIT 1;
+
+  DELETE FROM players WHERE id = p_player_id;
+
+  -- Last one out closes the room
+  IF NOT EXISTS (SELECT 1 FROM players WHERE room_id = v_room_id) THEN
+    DELETE FROM rooms WHERE id = v_room_id;
+    RETURN;
+  END IF;
+
+  -- Pass host to the longest-present remaining player
+  IF v_was_host THEN
+    SELECT id INTO v_new_host
+    FROM players WHERE room_id = v_room_id
+    ORDER BY created_at ASC LIMIT 1;
+
+    UPDATE players SET is_host = true WHERE id = v_new_host;
+    UPDATE rooms SET host_id = v_new_host::text WHERE id = v_room_id;
+  END IF;
+
+  IF v_active_round_id IS NOT NULL THEN
+    IF v_was_judge THEN
+      -- Round is gone (cascade); pick a new judge via category selection
+      UPDATE rooms SET status = 'category_selection' WHERE id = v_room_id;
+    ELSIF v_round_phase = 'submitting' THEN
+      PERFORM advance_round_if_complete(v_active_round_id);
+    END IF;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Best-effort cleanup called from the lobby: drop rooms that are older
+-- than a day or somehow ended up with no players.
+CREATE OR REPLACE FUNCTION cleanup_stale_rooms()
+RETURNS VOID AS $$
+BEGIN
+  DELETE FROM rooms WHERE created_at < NOW() - INTERVAL '24 hours';
+  DELETE FROM rooms r WHERE NOT EXISTS (
+    SELECT 1 FROM players p WHERE p.room_id = r.id
+  );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -386,6 +470,11 @@ BEGIN
   DELETE FROM guesses WHERE round_id = p_round_id AND judge_id = p_judge_id;
 
   FOR v_guess IN SELECT * FROM json_array_elements(p_guesses) LOOP
+    -- Skip players who left the room mid-judging
+    CONTINUE WHEN NOT EXISTS (
+      SELECT 1 FROM players WHERE id = (v_guess->>'player_id')::UUID
+    );
+
     INSERT INTO guesses (round_id, judge_id, player_id, position_guess, number_guess)
     VALUES (
       p_round_id,

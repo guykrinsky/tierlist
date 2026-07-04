@@ -49,21 +49,13 @@ export default function JoinPage() {
       });
 
       if (error) {
-        if (error.message.includes("Room not found")) {
-          toast({
-            title: "Room not found",
-            description: "Check the room code and try again",
-            variant: "destructive",
-          });
-        } else if (error.message.includes("Game already started")) {
-          toast({
-            title: "Game in progress",
-            description: "This game has already started",
-            variant: "destructive",
-          });
-        } else {
-          throw error;
-        }
+        // join_room raises human-readable errors (room not found, game
+        // already started, room full, name taken) - show them directly
+        toast({
+          title: "Couldn't join",
+          description: error.message || "Failed to join room",
+          variant: "destructive",
+        });
         return;
       }
 

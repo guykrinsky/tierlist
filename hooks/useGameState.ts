@@ -238,14 +238,14 @@ export function useGameState(roomId: string, playerId: string | null) {
     };
   }, [currentRoundId, playerId, fetchGameData, supabase]);
 
-  // Leave room
+  // Leave room. The RPC reassigns the host, recovers the round if the
+  // judge left, and deletes the room when the last player leaves.
   const leaveRoom = useCallback(async () => {
     if (!playerId) return;
 
-    const { error } = await supabase
-      .from("players")
-      .delete()
-      .eq("id", playerId);
+    const { error } = await supabase.rpc("leave_room", {
+      p_player_id: playerId,
+    });
 
     if (error) {
       console.error("Error leaving room:", error);
