@@ -15,7 +15,8 @@ interface GameOverProps {
 }
 
 export function GameOver({ players, onPlayAgain, onGoHome, isHost }: GameOverProps) {
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  // Fewest bad points wins
+  const sortedPlayers = [...players].sort((a, b) => a.bad_points - b.bad_points);
   const winner = sortedPlayers[0];
 
   const getRankIcon = (index: number) => {
@@ -86,7 +87,8 @@ export function GameOver({ players, onPlayAgain, onGoHome, isHost }: GameOverPro
             Game Over!
           </h2>
           <p className="text-xl text-muted-foreground">
-            <span className="text-tierlist-blue font-bold">{winner.name}</span> wins!
+            <span className="text-tierlist-blue font-bold">{winner.name}</span> wins with{" "}
+            {winner.bad_points} bad point{winner.bad_points === 1 ? "" : "s"}!
           </p>
         </motion.div>
 
@@ -117,8 +119,11 @@ export function GameOver({ players, onPlayAgain, onGoHome, isHost }: GameOverPro
                 <div className="flex-1">
                   <span className="font-semibold text-white">{player.name}</span>
                 </div>
-                <div className="text-2xl font-black text-tierlist-blue">
-                  {player.score}
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-tierlist-blue">
+                    {player.bad_points}
+                  </span>
+                  <span className="text-white/40 text-sm">bad</span>
                 </div>
               </motion.div>
             ))}
