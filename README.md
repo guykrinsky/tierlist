@@ -1,6 +1,6 @@
 # 🎮 TIERLIST - The Party Game
 
-A multiplayer party game where players try to fool the judge by picking items that match their secret number!
+A multiplayer party game about understanding how other people think: everyone picks an item that represents their secret number, and the Judge tries to work out which number each item is.
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
@@ -10,24 +10,28 @@ A multiplayer party game where players try to fool the judge by picking items th
 
 1. **Create or Join a Room** - One player creates a room and shares the code with friends (or adds bot players to fill seats)
 2. **Judge Picks Category** - Each round, one player becomes the Judge and picks a category (e.g., "Foods That Slap at 3 AM")
-3. **Players Get Unique Numbers** - Non-judge players receive a unique number from 1-10 (no duplicates!)
-4. **Submit Your Item** - Pick something from the category that matches your number (1 = worst, 10 = best)
-5. **Watch Live Ordering** - As players submit, non-judges see the live sorted list update in real-time
-6. **Judge Ranks** - The Judge puts everyone's answers in order from lowest to highest
-7. **Score Points** - You earn a point every time the Judge places you at your true position!
+3. **Players Get Unique Numbers** - Non-judge players receive a unique number from 1-10 (no duplicates!), hidden from everyone else
+4. **Submit Your Item** - Pick something from the category that represents your number (1 = worst, 10 = best)
+5. **Judge Guesses** - The Judge sees every answer without names, and gives each one the number they think it is
+6. **Collect Bad Points** - The further off the guess, the more bad points for the player *and* the Judge
 
 ## 🏆 Scoring
 
-The Judge ranks each player's answer by **position** (lowest number → highest number).
+The game is scored in **bad points**, and **lower is always better**.
 
-| Action | Points |
-|--------|--------|
-| Judge places a player at their **correct position** | Player +1 AND Judge +1 |
-| Judge gets **ALL positions correct** | Judge +2 bonus |
+| Action | Bad points |
+|--------|-----------|
+| Every answer | `\|actual number − Judge's guess\|`, given to the player **and** the Judge |
+| Judge gets the **relative order** of every answer right (exact numbers don't matter) | Judge **−3** |
 
-**First to 10 points wins!**
+A player's total can never drop below 0.
 
-> 💡 **Strategy Tip**: As a player, try to pick items that could match multiple numbers to confuse the Judge!
+**When the game ends** (everyone has judged the same number of times), the player with the
+**fewest bad points wins**.
+
+> 💡 **Strategy Tip**: Help the Judge see the scale without making your exact number obvious - and as Judge, remember that a perfect *order* is worth 3 bad points even when every number is wrong.
+
+The canonical rules live in [`docs/games-rules.md`](docs/games-rules.md).
 
 ## ✨ Features
 
@@ -109,7 +113,7 @@ Open [http://localhost:3000](http://localhost:3000) and start playing!
 - **Styling**: Tailwind CSS, Framer Motion
 - **Database**: Supabase (PostgreSQL)
 - **Real-time**: Supabase Realtime subscriptions
-- **Drag & Drop**: dnd-kit
+- **Animation**: Framer Motion
 
 ## 📁 Project Structure
 
@@ -124,7 +128,7 @@ tierlist/
 │   ├── ui/               # Base UI components
 │   ├── CategorySelector  # Judge's category picker
 │   ├── PlayerSpeechInput # Player submission form
-│   ├── JudgeOrderingBoard # Drag-to-order interface
+│   ├── JudgeNumberGuessInterface # Judge assigns 1-10 to each answer
 │   └── ...
 ├── hooks/                 # Custom React hooks
 │   ├── useGameState.ts   # Main game state management
@@ -146,10 +150,11 @@ tierlist/
 └─────────────┘     └──────────────────┘     └─────────────┘
                                                     │
 ┌─────────────┐     ┌──────────────────┐            ▼
-│  Game Over  │◀────│    Results       │◀────┌─────────────┐
-│  (Winner!)  │     │  (Show scores)   │     │   Judging   │
-└─────────────┘     └──────────────────┘     │(Judge orders)│
-                           │                 └─────────────┘
+│  Game Over  │◀────│    Results       │◀────┌──────────────┐
+│(Fewest bad) │     │  (Bad points)    │     │   Judging    │
+└─────────────┘     └──────────────────┘     │(Judge guesses│
+                           │                 │ the numbers) │
+                           │                 └──────────────┘
                            │
                            ▼
                     ┌──────────────────┐

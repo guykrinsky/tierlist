@@ -105,6 +105,9 @@ export function WaitingRoom({
   const minPlayers = 3;
   const maxPlayers = 10;
   const canStart = players.length >= minPlayers;
+  // Bots never judge, so the game length follows the human players
+  const humanCount = players.filter((p) => !p.is_bot).length;
+  const plannedRounds = Math.max(1, humanCount) * room.rounds_per_player;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -277,6 +280,11 @@ export function WaitingRoom({
                   Playing alone? Add {minPlayers - players.length} bot{minPlayers - players.length !== 1 ? "s" : ""} and you&apos;ll be the judge every round.
                 </p>
               )}
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                {plannedRounds} round{plannedRounds !== 1 ? "s" : ""} &bull; everyone judges{" "}
+                {room.rounds_per_player === 1 ? "once" : `${room.rounds_per_player} times`} &bull;
+                fewest bad points wins
+              </p>
             </CardContent>
           </Card>
 
