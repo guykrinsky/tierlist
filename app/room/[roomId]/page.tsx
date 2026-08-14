@@ -161,7 +161,7 @@ export default function RoomPage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-tierlist-blue mx-auto mb-3" />
-          <p className="text-white/70">Loading...</p>
+          <p className="text-foreground/70">Loading...</p>
         </div>
       </div>
     );
@@ -172,9 +172,9 @@ export default function RoomPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <Card className="p-8 text-center max-w-sm bg-card border-border">
-          <h2 className="text-xl font-bold text-white mb-3">Room Not Found</h2>
-          <p className="text-white/60 mb-4">This room doesn&apos;t exist.</p>
-          <Button onClick={() => router.push("/")} className="bg-tierlist-blue hover:bg-tierlist-blue-dark text-white">
+          <h2 className="text-xl font-bold text-foreground mb-3">Room Not Found</h2>
+          <p className="text-foreground/60 mb-4">This room doesn&apos;t exist.</p>
+          <Button onClick={() => router.push("/")} className="bg-tierlist-blue hover:bg-tierlist-blue-dark text-foreground">
             Go Home
           </Button>
         </Card>
@@ -223,7 +223,7 @@ export default function RoomPage() {
         >
           <div className="text-center">
             <Logo size="lg" />
-            <p className="mt-3 text-lg text-white">
+            <p className="mt-3 text-lg text-foreground">
               <span className="text-tierlist-blue font-bold">{nextJudgeName}</span> is the Judge
             </p>
           </div>
@@ -262,11 +262,11 @@ export default function RoomPage() {
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Logo size="sm" animated={false} />
-            <span className="text-white/50">|</span>
-            <span className="text-white font-medium">{currentPlayer?.name}</span>
+            <span className="text-foreground/50">|</span>
+            <span className="text-foreground font-medium">{currentPlayer?.name}</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-white/50 text-sm">
+            <div className="flex items-center gap-1.5 text-foreground/50 text-sm">
               <Users className="w-4 h-4" />
               <span>{players.length}</span>
             </div>
@@ -274,7 +274,7 @@ export default function RoomPage() {
               variant="ghost"
               size="sm"
               onClick={handleLeaveRoom}
-              className="text-white/50 hover:text-white hover:bg-white/10"
+              className="text-foreground/50 hover:text-foreground hover:bg-white/10"
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -296,7 +296,7 @@ export default function RoomPage() {
                 <p className="text-tierlist-blue text-sm font-medium uppercase tracking-wider mb-2">
                   This Round&apos;s Category
                 </p>
-                <h1 className="text-3xl sm:text-4xl font-black text-white">
+                <h1 className="text-3xl sm:text-4xl font-black text-foreground">
                   {currentRound.category}
                 </h1>
               </div>
@@ -312,7 +312,7 @@ export default function RoomPage() {
             >
               <div className="flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-card border border-border">
                 <Gavel className="w-5 h-5 text-yellow-500" />
-                <span className="text-white">
+                <span className="text-foreground">
                   Judge: <span className="font-bold text-yellow-500">{judge?.name}</span>
                   {isJudge && <span className="ml-2 text-xs bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded">YOU</span>}
                 </span>
@@ -346,9 +346,9 @@ export default function RoomPage() {
                 <Card className="p-6 bg-green-500/10 border-green-500/30">
                   <div className="text-center">
                     <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                    <h3 className="text-xl font-bold text-white mb-2">Submitted!</h3>
-                    <p className="text-white/80 text-lg mb-4">&quot;{mySubmission.text}&quot;</p>
-                    <p className="text-white/50 text-sm">
+                    <h3 className="text-xl font-bold text-foreground mb-2">Submitted!</h3>
+                    <p className="text-foreground/80 text-lg mb-4">&quot;{mySubmission.text}&quot;</p>
+                    <p className="text-foreground/50 text-sm">
                       Waiting for others... ({submissions.length}/{nonJudgePlayers.length})
                     </p>
                   </div>
@@ -374,10 +374,10 @@ export default function RoomPage() {
                   >
                     <Clock className="w-16 h-16 text-tierlist-blue" />
                   </motion.div>
-                  <h3 className="text-2xl font-bold text-white mb-2">
+                  <h3 className="text-2xl font-bold text-foreground mb-2">
                     Players are answering...
                   </h3>
-                  <p className="text-white/60 mb-6">
+                  <p className="text-foreground/60 mb-6">
                     Wait for all players to submit their answers
                   </p>
 
@@ -390,9 +390,9 @@ export default function RoomPage() {
                         animate={{ width: `${(submissions.length / nonJudgePlayers.length) * 100}%` }}
                       />
                     </div>
-                    <p className="text-white/70 mt-2">
+                    <p className="text-foreground/70 mt-2">
                       <span className="text-tierlist-blue font-bold text-lg">{submissions.length}</span>
-                      <span className="text-white/50"> / {nonJudgePlayers.length}</span>
+                      <span className="text-foreground/50"> / {nonJudgePlayers.length}</span>
                     </p>
                   </div>
 
@@ -406,7 +406,7 @@ export default function RoomPage() {
                           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
                             hasSubmitted
                               ? "bg-green-500/20 text-green-400"
-                              : "bg-muted/30 text-white/50"
+                              : "bg-muted/30 text-foreground/50"
                           }`}
                         >
                           {hasSubmitted ? (

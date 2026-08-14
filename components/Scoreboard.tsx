@@ -23,7 +23,7 @@ export function Scoreboard({ players, winningScore, currentRound }: ScoreboardPr
       case 2:
         return <Award className="w-5 h-5 text-amber-600" />;
       default:
-        return <span className="w-5 h-5 text-center text-white/40 text-sm font-bold">{index + 1}</span>;
+        return <span className="w-5 h-5 text-center text-foreground/40 text-sm font-bold">{index + 1}</span>;
     }
   };
 
@@ -33,9 +33,9 @@ export function Scoreboard({ players, winningScore, currentRound }: ScoreboardPr
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <Trophy className="w-5 h-5 text-yellow-500" />
-          <h3 className="text-lg font-bold text-white">Scoreboard</h3>
+          <h3 className="text-lg font-bold text-foreground">Scoreboard</h3>
         </div>
-        <div className="text-white/50 text-sm">
+        <div className="text-foreground/50 text-sm">
           Round {currentRound} • First to {winningScore}
         </div>
       </div>
@@ -61,15 +61,15 @@ export function Scoreboard({ players, winningScore, currentRound }: ScoreboardPr
 
             {/* Name */}
             <div className="flex-1 min-w-0">
-              <span className="font-medium text-white truncate block">
+              <span className="font-medium text-foreground truncate block">
                 {player.name}
               </span>
             </div>
 
             {/* Score */}
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-white">{player.score}</span>
-              <span className="text-white/40 text-sm">/{winningScore}</span>
+              <span className="text-2xl font-black text-foreground">{player.score}</span>
+              <span className="text-foreground/40 text-sm">/{winningScore}</span>
             </div>
           </motion.div>
         ))}

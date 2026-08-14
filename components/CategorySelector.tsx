@@ -57,7 +57,7 @@ export function CategorySelector({
           >
             <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-yellow-500 mb-3 sm:mb-4" />
           </motion.div>
-          <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
+          <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2">
             Category Selection
           </h3>
           <p className="text-sm sm:text-base text-muted-foreground">
@@ -114,7 +114,7 @@ export function CategorySelector({
                     : "border-border hover:border-tierlist-blue/50 hover:bg-muted/30 active:bg-muted/50"
                 }`}
               >
-                <p className="font-medium text-white text-sm sm:text-base">{category}</p>
+                <p className="font-medium text-foreground text-sm sm:text-base">{category}</p>
               </motion.button>
             ))}
 

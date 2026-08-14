@@ -82,7 +82,7 @@ export function GameOver({ players, onPlayAgain, onGoHome, isHost }: GameOverPro
           >
             <Trophy className="w-24 h-24 mx-auto text-yellow-500 mb-4" />
           </motion.div>
-          <h2 className="text-4xl font-black text-white mb-2">
+          <h2 className="text-4xl font-black text-foreground mb-2">
             Game Over!
           </h2>
           <p className="text-xl text-muted-foreground">
@@ -91,7 +91,7 @@ export function GameOver({ players, onPlayAgain, onGoHome, isHost }: GameOverPro
         </motion.div>
 
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 text-center">
+          <h3 className="text-lg font-semibold text-foreground mb-4 text-center">
             Final Standings
           </h3>
           <div className="space-y-3">
@@ -115,7 +115,7 @@ export function GameOver({ players, onPlayAgain, onGoHome, isHost }: GameOverPro
                   )}
                 </div>
                 <div className="flex-1">
-                  <span className="font-semibold text-white">{player.name}</span>
+                  <span className="font-semibold text-foreground">{player.name}</span>
                 </div>
                 <div className="text-2xl font-black text-tierlist-blue">
                   {player.score}

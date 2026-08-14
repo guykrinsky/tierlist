@@ -65,10 +65,10 @@ export function JudgeRankingInterface({
           <Target className="w-5 h-5 text-yellow-500" />
           <span className="font-bold text-yellow-500">RANK THE ANSWERS</span>
         </div>
-        <h2 className="text-2xl font-bold text-white">
+        <h2 className="text-2xl font-bold text-foreground">
           Drag & drop to rank from best to worst
         </h2>
-        <p className="text-white/60 mt-2">
+        <p className="text-foreground/60 mt-2">
           Position 1 = Best (lowest number) • Position {rankings.length} = Worst (highest number)
         </p>
       </div>
@@ -87,11 +87,11 @@ export function JudgeRankingInterface({
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center">
-                    <span className="text-xl font-black text-white">#{ranking.positionGuess}</span>
+                    <span className="text-xl font-black text-foreground">#{ranking.positionGuess}</span>
                   </div>
                   <div>
-                    <p className="font-semibold text-white">{ranking.playerName}</p>
-                    <p className="text-white/50 text-xs">Position {ranking.positionGuess}</p>
+                    <p className="font-semibold text-foreground">{ranking.playerName}</p>
+                    <p className="text-foreground/50 text-xs">Position {ranking.positionGuess}</p>
                   </div>
                 </div>
 
@@ -102,7 +102,7 @@ export function JudgeRankingInterface({
                     size="sm"
                     onClick={() => handleMoveUp(index)}
                     disabled={index === 0}
-                    className="h-8 w-8 p-0 text-white/60 hover:text-white hover:bg-white/10"
+                    className="h-8 w-8 p-0 text-foreground/60 hover:text-foreground hover:bg-white/10"
                   >
                     ↑
                   </Button>
@@ -111,7 +111,7 @@ export function JudgeRankingInterface({
                     size="sm"
                     onClick={() => handleMoveDown(index)}
                     disabled={index === rankings.length - 1}
-                    className="h-8 w-8 p-0 text-white/60 hover:text-white hover:bg-white/10"
+                    className="h-8 w-8 p-0 text-foreground/60 hover:text-foreground hover:bg-white/10"
                   >
                     ↓
                   </Button>
@@ -123,7 +123,7 @@ export function JudgeRankingInterface({
                 <div className="flex items-start gap-3">
                   <MessageSquare className="w-5 h-5 text-tierlist-blue mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-lg font-medium text-white leading-relaxed">
+                    <p className="text-lg font-medium text-foreground leading-relaxed">
                       &ldquo;{ranking.submission}&rdquo;
                     </p>
                   </div>

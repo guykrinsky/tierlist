@@ -90,7 +90,7 @@ export function Timer({
             ? "text-red-500"
             : isLowTime
             ? "text-yellow-500"
-            : "text-white"
+            : "text-foreground"
         }`}>
           {minutes}:{seconds.toString().padStart(2, "0")}
         </span>
