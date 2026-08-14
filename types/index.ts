@@ -7,15 +7,19 @@ export interface Room {
   name: string | null;
   status: RoomStatus;
   created_at: string;
-  winning_score: number;
   current_round: number;
+  /** How many times each player judges before the game ends (1-3). */
+  rounds_per_player: number;
+  /** humans x rounds_per_player, locked in when the first round starts. */
+  total_rounds: number | null;
 }
 
 export interface Player {
   id: string;
   room_id: string;
   name: string;
-  score: number;
+  /** Lower is better - the player with the fewest bad points wins. */
+  bad_points: number;
   is_judge: boolean;
   is_host: boolean;
   is_bot: boolean;
@@ -60,8 +64,10 @@ export interface Guess {
   round_id: string;
   judge_id: string;
   player_id: string;
-  position_guess: number;
-  number_guess: number | null;
+  /** The judge's guess of this player's secret number (1-10). */
+  number_guess: number;
+  /** Legacy ordering guess, no longer written. */
+  position_guess: number | null;
 }
 
 // Extended types for UI
@@ -93,11 +99,10 @@ export interface RoundResult {
   playerName: string;
   secretNumber: number;
   submission: string;
-  judgePositionGuess: number;
-  actualPosition: number;
-  positionCorrect: boolean;
-  playerPointsEarned: number;
-  judgePointsEarned: number;
+  /** The judge's guess for this player, or null if they were never scored. */
+  numberGuess: number | null;
+  /** |secretNumber - numberGuess|, given to the player and the judge alike. */
+  badPoints: number;
 }
 
 export interface CreateRoomResponse {

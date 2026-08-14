@@ -18,7 +18,7 @@ export default function CreatePage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [roomName, setRoomName] = useState("");
-  const [winningScore, setWinningScore] = useState("10");
+  const [roundsPerPlayer, setRoundsPerPlayer] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreate = async () => {
@@ -37,7 +37,7 @@ export default function CreatePage() {
     try {
       const { data, error } = await supabase.rpc("create_room", {
         p_host_name: name.trim(),
-        p_winning_score: parseInt(winningScore) || 10,
+        p_rounds_per_player: roundsPerPlayer,
         p_room_name: roomName.trim() || null,
       });
 
@@ -134,21 +134,29 @@ export default function CreatePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="winningScore" className="flex items-center gap-2">
+                <Label className="flex items-center gap-2">
                   <Trophy className="w-4 h-4 text-muted-foreground" />
-                  Winning Score
+                  Rounds per Player
                 </Label>
-                <Input
-                  id="winningScore"
-                  type="number"
-                  value={winningScore}
-                  onChange={(e) => setWinningScore(e.target.value)}
-                  min={5}
-                  max={50}
-                  className="h-12"
-                />
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3].map((rounds) => (
+                    <button
+                      key={rounds}
+                      type="button"
+                      onClick={() => setRoundsPerPlayer(rounds)}
+                      className={`h-12 rounded-lg border font-bold transition-all ${
+                        roundsPerPlayer === rounds
+                          ? "border-tierlist-blue bg-tierlist-blue/20 text-foreground"
+                          : "border-border text-foreground/60 hover:border-tierlist-blue/50 hover:bg-muted/30"
+                      }`}
+                    >
+                      {rounds}
+                    </button>
+                  ))}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  First player to reach this score wins (default: 10)
+                  Everyone judges this many times, then the player with the fewest bad
+                  points wins.
                 </p>
               </div>
 

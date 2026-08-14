@@ -7,12 +7,13 @@ import type { Player } from "@/types";
 
 interface ScoreboardProps {
   players: Player[];
-  winningScore: number;
   currentRound: number;
+  totalRounds: number | null;
 }
 
-export function Scoreboard({ players, winningScore, currentRound }: ScoreboardProps) {
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+export function Scoreboard({ players, currentRound, totalRounds }: ScoreboardProps) {
+  // Bad points: lowest total is in the lead
+  const sortedPlayers = [...players].sort((a, b) => a.bad_points - b.bad_points);
 
   const getRankIcon = (index: number) => {
     switch (index) {
@@ -33,10 +34,11 @@ export function Scoreboard({ players, winningScore, currentRound }: ScoreboardPr
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <Trophy className="w-5 h-5 text-yellow-500" />
-          <h3 className="text-lg font-bold text-foreground">Scoreboard</h3>
+          <h3 className="text-lg font-bold text-foreground">Bad Points</h3>
         </div>
         <div className="text-foreground/50 text-sm">
-          Round {currentRound} • First to {winningScore}
+          Round {currentRound}
+          {totalRounds ? ` of ${totalRounds}` : ""} • Lowest wins
         </div>
       </div>
 
@@ -49,7 +51,7 @@ export function Scoreboard({ players, winningScore, currentRound }: ScoreboardPr
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.05 * index }}
             className={`flex items-center gap-3 p-3 rounded-xl ${
-              index === 0 && player.score > 0
+              index === 0
                 ? "bg-yellow-500/10 border border-yellow-500/20"
                 : "bg-muted/30"
             }`}
@@ -66,10 +68,10 @@ export function Scoreboard({ players, winningScore, currentRound }: ScoreboardPr
               </span>
             </div>
 
-            {/* Score */}
+            {/* Bad points */}
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-foreground">{player.score}</span>
-              <span className="text-foreground/40 text-sm">/{winningScore}</span>
+              <span className="text-2xl font-black text-foreground">{player.bad_points}</span>
+              <span className="text-foreground/40 text-sm">bad</span>
             </div>
           </motion.div>
         ))}

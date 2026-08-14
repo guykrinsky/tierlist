@@ -29,8 +29,7 @@ import {
   Trash2,
   Target,
   Brain,
-  TrendingUp,
-  Zap,
+  TrendingDown,
   Play,
   ArrowRight,
   ChevronDown
@@ -55,7 +54,6 @@ export default function HomePage() {
   const [quickJoinRoom, setQuickJoinRoom] = useState<ActiveRoom | null>(null);
   const [quickJoinName, setQuickJoinName] = useState("");
   const [isJoining, setIsJoining] = useState(false);
-  const [showRules, setShowRules] = useState(false);
   const supabase = createClient();
 
   const fetchActiveRooms = async () => {
@@ -190,19 +188,19 @@ export default function HomePage() {
     {
       icon: Hash,
       title: "Get Your Number",
-      description: "Each player receives a unique secret number from 1-10",
+      description: "Everyone else gets a unique 1-10, hidden from the whole table",
       color: "red",
     },
     {
       icon: Brain,
       title: "Submit Your Answer",
-      description: "Pick something from the category that hints at your number",
+      description: "Pick something from the category that represents your number",
       color: "yellow",
     },
     {
       icon: Target,
-      title: "Judge Ranks",
-      description: "The Judge puts everyone's answers in order, lowest to highest",
+      title: "Judge Guesses",
+      description: "The Judge sees the answers without names and gives each one a number",
       color: "green",
     },
   ];
@@ -248,9 +246,11 @@ export default function HomePage() {
                 transition={{ delay: 0.3 }}
                 className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto"
               >
-                Real-time party game of ranking and intuition.
+                Real-time party game about how other people think.
                 <br className="hidden sm:block" />
-                <span className="text-foreground font-medium">Guess the numbers, outsmart your friends!</span>
+                <span className="text-foreground font-medium">
+                  Guess the numbers, collect the fewest bad points!
+                </span>
               </motion.p>
 
               {/* Animated demo preview */}
@@ -305,7 +305,11 @@ export default function HomePage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1 }}
-                onClick={() => setShowRules(true)}
+                onClick={() =>
+                  document
+                    .getElementById("how-to-play")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
                 className="mt-12 flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mx-auto"
               >
                 <span className="text-sm">Learn how to play</span>
@@ -470,7 +474,7 @@ export default function HomePage() {
         </section>
 
         {/* How to Play Section */}
-        <section className="py-12 sm:py-16 px-4">
+        <section id="how-to-play" className="py-12 sm:py-16 px-4 scroll-mt-20">
           <div className="container mx-auto max-w-5xl">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -540,30 +544,41 @@ export default function HomePage() {
                       </div>
                     </div>
                     <div className="flex-1 text-center lg:text-left">
-                      <h3 className="text-xl font-bold text-foreground mb-4">Scoring System</h3>
+                      <h3 className="text-xl font-bold text-foreground mb-1">Bad Points</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        You collect bad points &mdash; and lower is always better.
+                      </p>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-lg bg-tierlist-red/20 flex items-center justify-center shrink-0 mt-0.5">
                             <Target className="w-4 h-4 text-tierlist-red" />
                           </div>
                           <div className="text-left">
-                            <p className="font-medium text-foreground text-sm">Correct Position</p>
-                            <p className="text-xs text-muted-foreground">+1 for that Player AND +1 for the Judge</p>
+                            <p className="font-medium text-foreground text-sm">Every Answer</p>
+                            <p className="text-xs text-muted-foreground">
+                              How far the Judge&apos;s guess was off, given to that player AND
+                              the Judge
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-lg bg-tierlist-blue/20 flex items-center justify-center shrink-0 mt-0.5">
-                            <TrendingUp className="w-4 h-4 text-tierlist-blue" />
+                            <TrendingDown className="w-4 h-4 text-tierlist-blue" />
                           </div>
                           <div className="text-left">
-                            <p className="font-medium text-foreground text-sm">Perfect Ordering</p>
-                            <p className="text-xs text-muted-foreground">Judge gets a +2 bonus for ranking everyone correctly</p>
+                            <p className="font-medium text-foreground text-sm">Perfect Order</p>
+                            <p className="text-xs text-muted-foreground">
+                              Judge wipes off 3 bad points for getting the order right, even
+                              with every number wrong
+                            </p>
                           </div>
                         </div>
                       </div>
                       <div className="mt-4 pt-4 border-t border-border/50">
                         <p className="text-sm text-muted-foreground">
-                          First to <span className="text-yellow-500 font-bold">10 points</span> wins the game!
+                          Once everyone has judged, the{" "}
+                          <span className="text-yellow-500 font-bold">fewest bad points</span>{" "}
+                          wins the game!
                         </p>
                       </div>
                     </div>
@@ -603,7 +618,7 @@ export default function HomePage() {
       <footer className="py-6 px-4 border-t border-border/50">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
           <Logo size="sm" animated={false} />
-          <p className="mt-2">A real-time party game of ranking and intuition</p>
+          <p className="mt-2">A real-time party game about how other people think</p>
         </div>
       </footer>
 

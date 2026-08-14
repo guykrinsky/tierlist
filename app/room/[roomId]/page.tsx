@@ -9,7 +9,7 @@ import { WaitingRoom } from "@/components/WaitingRoom";
 import { CategorySelector } from "@/components/CategorySelector";
 import { NumberHintCard } from "@/components/NumberHintCard";
 import { PlayerSpeechInput } from "@/components/PlayerSpeechInput";
-import { JudgeRankingInterface } from "@/components/JudgeRankingInterface";
+import { JudgeNumberGuessInterface, type AnonymousSubmission } from "@/components/JudgeNumberGuessInterface";
 import { PlayerJudgingView } from "@/components/PlayerJudgingView";
 import { ResultScreen } from "@/components/ResultScreen";
 import { Scoreboard } from "@/components/Scoreboard";
@@ -19,13 +19,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Gavel, Users, LogOut, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { calculateRoundResults } from "@/lib/utils";
-
-interface PlayerGuess {
-  playerId: string;
-  playerName: string;
-  submission: string;
-}
+import { calculateRoundResults, shuffleByKey } from "@/lib/utils";
 
 export default function RoomPage() {
   const params = useParams();
@@ -69,23 +63,17 @@ export default function RoomPage() {
     return sortedHumans[currentRoundNum % sortedHumans.length] ?? null;
   };
 
-  const [playerGuesses, setPlayerGuesses] = useState<PlayerGuess[]>([]);
   const [isSubmittingGuesses, setIsSubmittingGuesses] = useState(false);
 
-  useEffect(() => {
-    if (currentRound?.phase === "judging" && submissions.length > 0) {
-      const nonJudgePlayers = players.filter((p) => p.id !== currentRound.judge_id);
-      const initialGuesses = nonJudgePlayers.map((player) => {
-        const submission = submissions.find((s) => s.player_id === player.id);
-        return {
-          playerId: player.id,
-          playerName: player.name,
-          submission: submission?.text || "",
-        };
-      });
-      setPlayerGuesses(initialGuesses);
-    }
-  }, [currentRound?.phase, submissions, players, currentRound?.judge_id]);
+  // Nobody may learn who submitted what, so the answers are shown in an order
+  // derived from the round id rather than the order players joined or answered.
+  const anonymousSubmissions: AnonymousSubmission[] = currentRound
+    ? shuffleByKey(
+        submissions.filter((s) => s.player_id !== currentRound.judge_id),
+        (s) => s.player_id,
+        currentRound.id
+      ).map((s) => ({ playerId: s.player_id, submission: s.text }))
+    : [];
 
   useEffect(() => {
     if (!isLoading && !playerId) {
@@ -127,11 +115,6 @@ export default function RoomPage() {
   };
 
   const handleNextRound = async () => {
-    const winner = players.find((p) => p.score >= (room?.winning_score || 10));
-    if (winner) {
-      toast({ title: "🎉 Winner!", description: `${winner.name} wins!` });
-      return;
-    }
     try {
       await prepareNextRound();
     } catch {
@@ -182,8 +165,8 @@ export default function RoomPage() {
     );
   }
 
-  // Game Over
-  if (room.status === "finished" || players.some((p) => p.score >= room.winning_score)) {
+  // Game Over - the room is marked finished once every planned round is played
+  if (room.status === "finished") {
     return (
       <GameOver
         players={players}
@@ -246,10 +229,9 @@ export default function RoomPage() {
   const getResults = () => {
     if (!currentRound || guesses.length === 0) return null;
     const nonJudgePlayersForResults = players.filter((p) => p.id !== currentRound.judge_id);
-    const { results, totalJudgePoints, allPositionsCorrect } = calculateRoundResults(
+    return calculateRoundResults(
       nonJudgePlayersForResults, secrets, submissions, guesses
     );
-    return { results, totalJudgePoints, allPositionsCorrect };
   };
 
   // Show scoreboard only during results phase
@@ -432,23 +414,19 @@ export default function RoomPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <JudgeRankingInterface
-                submissions={playerGuesses.map(p => ({
-                  playerId: p.playerId,
-                  playerName: p.playerName,
-                  submission: p.submission,
-                  positionGuess: playerGuesses.findIndex(pg => pg.playerId === p.playerId) + 1,
-                }))}
-                onRankingSubmit={async (rankings) => {
+              <JudgeNumberGuessInterface
+                submissions={anonymousSubmissions}
+                onSubmitGuesses={async (numberGuesses) => {
                   setIsSubmittingGuesses(true);
                   try {
-                    const guessesData = rankings.map((ranking) => ({
-                      player_id: ranking.playerId,
-                      position_guess: ranking.positionGuess,
-                    }));
-                    await submitGuesses(guessesData);
+                    await submitGuesses(
+                      numberGuesses.map((guess) => ({
+                        player_id: guess.playerId,
+                        number_guess: guess.numberGuess,
+                      }))
+                    );
                   } catch {
-                    toast({ title: "Error", description: "Failed to submit rankings", variant: "destructive" });
+                    toast({ title: "Error", description: "Failed to submit guesses", variant: "destructive" });
                   } finally {
                     setIsSubmittingGuesses(false);
                   }
@@ -468,9 +446,8 @@ export default function RoomPage() {
               className="space-y-6"
             >
               <PlayerJudgingView
-                submissions={submissions}
-                secrets={secrets}
-                players={players}
+                submissionTexts={anonymousSubmissions.map((s) => s.submission)}
+                mySecret={mySecret}
                 judgeName={judge?.name || "Judge"}
               />
             </motion.div>
@@ -493,11 +470,14 @@ export default function RoomPage() {
                     <ResultScreen
                       results={resultsData.results}
                       judgeName={judge?.name || "Judge"}
-                      judgePointsEarned={resultsData.totalJudgePoints}
+                      judgeBadPoints={resultsData.judgeBadPoints}
                       category={currentRound.category}
                       onNextRound={handleNextRound}
                       isHost={currentPlayer?.is_host || false}
-                      allPositionsCorrect={resultsData.allPositionsCorrect}
+                      isLastRound={
+                        room.total_rounds !== null && room.current_round >= room.total_rounds
+                      }
+                      orderBonusEarned={resultsData.orderBonusEarned}
                     />
                     
                     {/* Scoreboard - Only shown during results */}
@@ -509,8 +489,8 @@ export default function RoomPage() {
                       >
                         <Scoreboard
                           players={players}
-                          winningScore={room.winning_score}
                           currentRound={room.current_round}
+                          totalRounds={room.total_rounds}
                         />
                       </motion.div>
                     )}

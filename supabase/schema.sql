@@ -15,12 +15,22 @@ CREATE TABLE IF NOT EXISTS rooms (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Game length (docs/games-rules.md): the game ends once everyone has judged
+-- the same number of times. The host picks rounds_per_player (1-3) and
+-- total_rounds is computed when the first round starts.
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS rounds_per_player INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS total_rounds INTEGER;
+
+-- rooms.winning_score is DEPRECATED: the game is scored in bad points now
+-- (lowest wins), so there is no score to race to. Kept so older deployments
+-- pointed at this database keep working until they are updated.
+
 -- Players table
 CREATE TABLE IF NOT EXISTS players (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  score INTEGER NOT NULL DEFAULT 0,
+  bad_points INTEGER NOT NULL DEFAULT 0,
   is_judge BOOLEAN NOT NULL DEFAULT false,
   is_host BOOLEAN NOT NULL DEFAULT false,
   is_bot BOOLEAN NOT NULL DEFAULT false,
@@ -28,6 +38,25 @@ CREATE TABLE IF NOT EXISTS players (
 );
 
 ALTER TABLE players ADD COLUMN IF NOT EXISTS is_bot BOOLEAN NOT NULL DEFAULT false;
+
+-- Scoring switched from "good points, highest wins" to bad points (lowest
+-- wins), so players.score became players.bad_points. Guarded so the rename
+-- happens once and the file stays re-runnable.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'players' AND column_name = 'score'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'players' AND column_name = 'bad_points'
+  ) THEN
+    ALTER TABLE players RENAME COLUMN score TO bad_points;
+    UPDATE players SET bad_points = 0;
+  END IF;
+END $$;
+
+ALTER TABLE players ADD COLUMN IF NOT EXISTS bad_points INTEGER NOT NULL DEFAULT 0;
 
 -- Rounds table
 CREATE TABLE IF NOT EXISTS rounds (
@@ -63,16 +92,21 @@ CREATE TABLE IF NOT EXISTS submissions (
   UNIQUE(round_id, player_id)
 );
 
--- Guesses table (Judge guesses)
+-- Guesses table (Judge guesses).
+-- number_guess is the judge's guess of the player's secret number and is what
+-- scoring runs on. position_guess is the legacy ordering guess, kept nullable
+-- for backwards compatibility but no longer written.
 CREATE TABLE IF NOT EXISTS guesses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   round_id UUID NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,
   judge_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
   player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-  position_guess INTEGER NOT NULL,
+  position_guess INTEGER,
   number_guess INTEGER CHECK (number_guess IS NULL OR (number_guess >= 1 AND number_guess <= 10)),
   UNIQUE(round_id, player_id)
 );
+
+ALTER TABLE guesses ALTER COLUMN position_guess DROP NOT NULL;
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_players_room_id ON players(room_id);
@@ -159,14 +193,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to create a new room
-CREATE OR REPLACE FUNCTION create_room(p_host_name TEXT, p_winning_score INTEGER DEFAULT 10, p_room_name TEXT DEFAULT NULL)
+-- Function to create a new room.
+-- The old signature took p_winning_score; a parameter rename can't be done
+-- with CREATE OR REPLACE, so the previous version is dropped explicitly.
+DROP FUNCTION IF EXISTS create_room(TEXT, INTEGER, TEXT);
+
+CREATE OR REPLACE FUNCTION create_room(p_host_name TEXT, p_rounds_per_player INTEGER DEFAULT 1, p_room_name TEXT DEFAULT NULL)
 RETURNS JSON AS $$
 DECLARE
   v_room_id TEXT;
   v_player_id UUID;
   v_room JSON;
   v_player JSON;
+  v_rounds_per_player INTEGER := LEAST(3, GREATEST(1, COALESCE(p_rounds_per_player, 1)));
 BEGIN
   -- Generate unique room code
   LOOP
@@ -175,8 +214,8 @@ BEGIN
   END LOOP;
 
   -- Create room
-  INSERT INTO rooms (id, host_id, name, winning_score)
-  VALUES (v_room_id, v_room_id, p_room_name, p_winning_score);
+  INSERT INTO rooms (id, host_id, name, rounds_per_player)
+  VALUES (v_room_id, v_room_id, p_room_name, v_rounds_per_player);
 
   -- Create host player
   INSERT INTO players (room_id, name, is_host)
@@ -408,6 +447,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Reset a finished room for a rematch: bad points back to 0 and the game
+-- length recomputed from whoever is in the room when it restarts.
+CREATE OR REPLACE FUNCTION reset_game(p_room_id TEXT)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE rounds SET is_active = false, phase = 'finished'
+  WHERE room_id = p_room_id AND is_active = true;
+
+  UPDATE players SET bad_points = 0, is_judge = false WHERE room_id = p_room_id;
+
+  UPDATE rooms
+  SET status = 'waiting', current_round = 0, total_rounds = NULL
+  WHERE id = p_room_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Function to start a new round
 CREATE OR REPLACE FUNCTION start_round(p_room_id TEXT, p_category TEXT)
 RETURNS JSON AS $$
@@ -439,6 +494,14 @@ BEGIN
 
   -- Update room status and round number
   UPDATE rooms SET status = 'playing', current_round = v_current_round WHERE id = p_room_id;
+
+  -- Lock in the game length on the first round: everyone judges the same
+  -- number of times, and bots never judge, so the rotation is over humans.
+  UPDATE rooms
+  SET total_rounds = GREATEST(1, (
+    SELECT COUNT(*) FROM players WHERE room_id = p_room_id AND is_bot = false
+  )) * rounds_per_player
+  WHERE id = p_room_id AND total_rounds IS NULL;
 
   -- Reset all players' judge status
   UPDATE players SET is_judge = false WHERE room_id = p_room_id;
@@ -542,24 +605,34 @@ $$ LANGUAGE plpgsql;
 
 -- Function to submit judge guesses and score the round in one shot.
 --
--- Scoring rules:
---   * Player placed at their exactly-correct position: player +1, judge +1
---   * Judge orders EVERYONE correctly: judge +2 bonus
+-- Scoring rules (docs/games-rules.md) - the game is played in BAD POINTS and
+-- the lowest total wins:
+--   * For every player: bad points = |actual number - judge's guess|, added to
+--     BOTH that player and the judge.
+--   * Judge order bonus: if the judge's guesses put every item in the correct
+--     relative order (exact numbers don't matter), the judge gets -3 bad
+--     points. A judge's total can never drop below 0.
+--
+-- The judge must guess a distinct number 1-10 for every submission; that is
+-- enforced here rather than trusting the client.
 --
 -- Scoring is idempotent (rounds.scores_applied guards against retries and
--- double-clicks) and the game is marked finished when someone reaches the
--- room's winning score.
+-- double-clicks) and the game is marked finished once the planned number of
+-- rounds has been played.
 CREATE OR REPLACE FUNCTION submit_guesses(p_round_id UUID, p_judge_id UUID, p_guesses JSON)
 RETURNS VOID AS $$
 DECLARE
   v_guess JSON;
   v_room_id TEXT;
   v_scores_applied BOOLEAN;
+  v_number INTEGER;
+  v_seen INTEGER[] := ARRAY[]::INTEGER[];
   v_row RECORD;
-  v_player_count INTEGER := 0;
-  v_correct_count INTEGER := 0;
-  v_judge_points INTEGER;
-  v_winning_score INTEGER;
+  v_scored_count INTEGER := 0;
+  v_judge_points INTEGER := 0;
+  v_order_correct BOOLEAN;
+  v_current_round INTEGER;
+  v_total_rounds INTEGER;
 BEGIN
   SELECT room_id, scores_applied INTO v_room_id, v_scores_applied
   FROM rounds WHERE id = p_round_id;
@@ -581,48 +654,64 @@ BEGIN
       SELECT 1 FROM players WHERE id = (v_guess->>'player_id')::UUID
     );
 
-    INSERT INTO guesses (round_id, judge_id, player_id, position_guess, number_guess)
-    VALUES (
-      p_round_id,
-      p_judge_id,
-      (v_guess->>'player_id')::UUID,
-      (v_guess->>'position_guess')::INTEGER,
-      (v_guess->>'number_guess')::INTEGER
-    );
-  END LOOP;
+    v_number := (v_guess->>'number_guess')::INTEGER;
 
-  -- Compare guessed positions against the true ordering by secret number.
-  -- A player the judge skipped counts as incorrect (LEFT JOIN + COALESCE).
-  FOR v_row IN
-    WITH actual AS (
-      SELECT player_id, ROW_NUMBER() OVER (ORDER BY value ASC) AS pos
-      FROM secrets
-      WHERE round_id = p_round_id
-    )
-    SELECT a.player_id, COALESCE(g.position_guess = a.pos, false) AS is_correct
-    FROM actual a
-    LEFT JOIN guesses g ON g.round_id = p_round_id AND g.player_id = a.player_id
-  LOOP
-    v_player_count := v_player_count + 1;
-    IF v_row.is_correct THEN
-      v_correct_count := v_correct_count + 1;
-      UPDATE players SET score = score + 1 WHERE id = v_row.player_id;
+    IF v_number IS NULL OR v_number < 1 OR v_number > 10 THEN
+      RAISE EXCEPTION 'Every guess must be a number between 1 and 10';
     END IF;
+
+    IF v_number = ANY(v_seen) THEN
+      RAISE EXCEPTION 'Each number can only be used once';
+    END IF;
+
+    v_seen := v_seen || v_number;
+
+    INSERT INTO guesses (round_id, judge_id, player_id, number_guess)
+    VALUES (p_round_id, p_judge_id, (v_guess->>'player_id')::UUID, v_number);
   END LOOP;
 
-  v_judge_points := v_correct_count;
-  IF v_player_count > 0 AND v_correct_count = v_player_count THEN
-    v_judge_points := v_judge_points + 2; -- perfect ordering bonus
+  -- Bad points = |actual - guess| for the player and the judge alike.
+  -- A player the judge skipped is simply not scored this round.
+  FOR v_row IN
+    SELECT s.player_id, abs(s.value - g.number_guess) AS bad_points
+    FROM secrets s
+    JOIN guesses g ON g.round_id = p_round_id AND g.player_id = s.player_id
+    WHERE s.round_id = p_round_id
+  LOOP
+    v_scored_count := v_scored_count + 1;
+    v_judge_points := v_judge_points + v_row.bad_points;
+    UPDATE players SET bad_points = bad_points + v_row.bad_points WHERE id = v_row.player_id;
+  END LOOP;
+
+  -- Order bonus: no pair may be ranked the wrong way round. Needs at least two
+  -- scored submissions, otherwise the ordering is trivially "correct".
+  IF v_scored_count >= 2 THEN
+    SELECT NOT EXISTS (
+      SELECT 1
+      FROM secrets a
+      JOIN guesses ga ON ga.round_id = p_round_id AND ga.player_id = a.player_id
+      JOIN secrets b ON b.round_id = p_round_id AND b.value > a.value
+      JOIN guesses gb ON gb.round_id = p_round_id AND gb.player_id = b.player_id
+      WHERE a.round_id = p_round_id AND ga.number_guess >= gb.number_guess
+    ) INTO v_order_correct;
+
+    IF v_order_correct THEN
+      v_judge_points := v_judge_points - 3;
+    END IF;
   END IF;
-  UPDATE players SET score = score + v_judge_points WHERE id = p_judge_id;
+
+  -- Bad points may never become negative
+  UPDATE players
+  SET bad_points = GREATEST(0, bad_points + v_judge_points)
+  WHERE id = p_judge_id;
 
   UPDATE rounds SET phase = 'results', scores_applied = true WHERE id = p_round_id;
 
-  -- End the game when someone reaches the winning score
-  SELECT winning_score INTO v_winning_score FROM rooms WHERE id = v_room_id;
-  IF EXISTS (
-    SELECT 1 FROM players WHERE room_id = v_room_id AND score >= v_winning_score
-  ) THEN
+  -- End the game once every player has judged the planned number of times
+  SELECT current_round, total_rounds INTO v_current_round, v_total_rounds
+  FROM rooms WHERE id = v_room_id;
+
+  IF v_total_rounds IS NOT NULL AND v_current_round >= v_total_rounds THEN
     UPDATE rooms SET status = 'finished' WHERE id = v_room_id;
   END IF;
 END;
