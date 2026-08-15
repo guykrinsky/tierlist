@@ -44,6 +44,7 @@ export default function RoomPage() {
     submitGuesses,
     nextRound,
     prepareNextRound,
+    finishGame,
     resetGame,
     leaveRoom,
     addBot,
@@ -64,6 +65,11 @@ export default function RoomPage() {
   };
 
   const [isSubmittingGuesses, setIsSubmittingGuesses] = useState(false);
+
+  // Every planned round has been played, so this round's results are the last
+  // thing shown before the leaderboard.
+  const isLastRound =
+    room?.total_rounds != null && room.current_round >= room.total_rounds;
 
   // Nobody may learn who submitted what, so the answers are shown in an order
   // derived from the round id rather than the order players joined or answered.
@@ -116,7 +122,9 @@ export default function RoomPage() {
 
   const handleNextRound = async () => {
     try {
-      await prepareNextRound();
+      // On the last round the room is already 'finished'; closing the round
+      // is what takes everyone to the leaderboard.
+      await (isLastRound ? finishGame() : prepareNextRound());
     } catch {
       toast({ title: "Error", description: "Failed to continue", variant: "destructive" });
     }
@@ -165,8 +173,11 @@ export default function RoomPage() {
     );
   }
 
-  // Game Over - the room is marked finished once every planned round is played
-  if (room.status === "finished") {
+  // Game Over - the room is marked finished once every planned round is played.
+  // submit_guesses flips the status in the same transaction that moves the
+  // round to 'results', so the final round's results must win here; the host
+  // closes the round (finishGame) to release everyone to the leaderboard.
+  if (room.status === "finished" && currentRound?.phase !== "results") {
     return (
       <GameOver
         players={players}
@@ -474,9 +485,7 @@ export default function RoomPage() {
                       category={currentRound.category}
                       onNextRound={handleNextRound}
                       isHost={currentPlayer?.is_host || false}
-                      isLastRound={
-                        room.total_rounds !== null && room.current_round >= room.total_rounds
-                      }
+                      isLastRound={isLastRound}
                       orderBonusEarned={resultsData.orderBonusEarned}
                     />
                     

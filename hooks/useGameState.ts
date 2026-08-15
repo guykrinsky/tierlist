@@ -349,6 +349,23 @@ export function useGameState(roomId: string, playerId: string | null) {
     }
   }, [roomId, supabase]);
 
+  // Close out the final round. submit_guesses already flipped the room to
+  // 'finished'; deactivating the round is what moves every client off the
+  // results screen and onto the leaderboard, so the host controls the timing.
+  const finishGame = useCallback(async () => {
+    if (!gameState.currentRound) return;
+
+    const { error } = await supabase
+      .from("rounds")
+      .update({ is_active: false, phase: "finished" })
+      .eq("id", gameState.currentRound.id);
+
+    if (error) {
+      console.error("Error finishing game:", error);
+      throw error;
+    }
+  }, [gameState.currentRound, supabase]);
+
   // Prepare for category selection (set room to category_selection phase)
   const prepareNextRound = useCallback(async () => {
     // Deactivate current round and set room to category selection
@@ -446,6 +463,7 @@ export function useGameState(roomId: string, playerId: string | null) {
     submitGuesses,
     nextRound,
     prepareNextRound,
+    finishGame,
     resetGame,
     leaveRoom,
     addBot,
