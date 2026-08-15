@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Navigation } from "@/components/Navigation";
 import { Logo } from "@/components/Logo";
+import { RulesWalkthrough } from "@/components/RulesWalkthrough";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import {
   Target,
   Brain,
   TrendingDown,
+  BookOpen,
   Play,
   ArrowRight,
   ChevronDown
@@ -54,6 +56,7 @@ export default function HomePage() {
   const [quickJoinRoom, setQuickJoinRoom] = useState<ActiveRoom | null>(null);
   const [quickJoinName, setQuickJoinName] = useState("");
   const [isJoining, setIsJoining] = useState(false);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   const supabase = createClient();
 
   const fetchActiveRooms = async () => {
@@ -298,6 +301,15 @@ export default function HomePage() {
                     Join Existing Game
                   </Button>
                 </Link>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => setShowWalkthrough(true)}
+                  className="w-full sm:w-auto gap-2 h-14 px-8 text-lg border-2 border-yellow-500/40 text-yellow-500 hover:bg-yellow-500/10 hover:text-yellow-400"
+                >
+                  <BookOpen className="w-5 h-5" />
+                  How to Play
+                </Button>
               </motion.div>
 
               {/* Scroll indicator */}
@@ -312,7 +324,7 @@ export default function HomePage() {
                 }
                 className="mt-12 flex flex-col items-center gap-2 text-muted-foreground hover:text-white transition-colors mx-auto"
               >
-                <span className="text-sm">Learn how to play</span>
+                <span className="text-sm">See the rules at a glance</span>
                 <motion.div
                   animate={{ y: [0, 5, 0] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
@@ -488,6 +500,14 @@ export default function HomePage() {
               <p className="text-muted-foreground">
                 Master the game in 4 simple steps
               </p>
+              <Button
+                variant="outline"
+                onClick={() => setShowWalkthrough(true)}
+                className="mt-4 gap-2 border-yellow-500/40 text-yellow-500 hover:bg-yellow-500/10 hover:text-yellow-400"
+              >
+                <BookOpen className="w-4 h-4" />
+                Walk me through a round
+              </Button>
             </motion.div>
 
             <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
@@ -621,6 +641,9 @@ export default function HomePage() {
           <p className="mt-2">A real-time party game about how other people think</p>
         </div>
       </footer>
+
+      {/* Illustrated rules walkthrough */}
+      <RulesWalkthrough open={showWalkthrough} onOpenChange={setShowWalkthrough} />
 
       {/* Quick Join Dialog */}
       <Dialog open={!!quickJoinRoom} onOpenChange={(open) => !open && setQuickJoinRoom(null)}>
