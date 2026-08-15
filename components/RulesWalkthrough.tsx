@@ -36,10 +36,10 @@ function NumberBadge({
   size?: "sm" | "md";
 }) {
   const tones = {
-    blue: "number-badge text-white",
-    hidden: "bg-muted/60 text-white/40 border border-white/10",
+    blue: "number-badge text-foreground",
+    hidden: "bg-muted/60 text-foreground/40 border border-white/10",
     yellow: "bg-gradient-to-br from-yellow-500 to-yellow-600 text-black",
-    green: "bg-gradient-to-br from-green-500 to-green-600 text-white",
+    green: "bg-gradient-to-br from-green-500 to-green-600 text-foreground",
   };
   const sizes = {
     sm: "w-9 h-9 text-base rounded-lg",
@@ -60,7 +60,7 @@ function PlayerChip({ name, isJudge = false }: { name: string; isJudge?: boolean
       className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm ${
         isJudge
           ? "border-yellow-500/50 bg-yellow-500/10 text-yellow-500 font-semibold"
-          : "border-border bg-muted/30 text-white/80"
+          : "border-border bg-muted/30 text-foreground/80"
       }`}
     >
       {isJudge && <Gavel className="w-4 h-4" />}
@@ -82,7 +82,7 @@ function SlideJudge() {
         <p className="text-tierlist-blue text-xs font-medium uppercase tracking-wider mb-1">
           This round&apos;s category
         </p>
-        <p className="text-2xl font-black text-white">Fruits</p>
+        <p className="text-2xl font-black text-foreground">Fruits</p>
       </div>
     </div>
   );
@@ -95,7 +95,7 @@ function SlideSecrets() {
         {["Ori", "Dana"].map((name) => (
           <div key={name} className="flex flex-col items-center gap-2">
             <NumberBadge value={<EyeOff className="w-5 h-5" />} tone="hidden" />
-            <span className="text-xs text-white/50">{name}</span>
+            <span className="text-xs text-foreground/50">{name}</span>
           </div>
         ))}
         <div className="flex flex-col items-center gap-2">
@@ -109,7 +109,7 @@ function SlideSecrets() {
           <span className="text-xs text-tierlist-blue font-medium">You</span>
         </div>
       </div>
-      <p className="text-center text-xs text-white/50">
+      <p className="text-center text-xs text-foreground/50">
         Every number 1-10 is used at most once. Maya judges, so she gets none.
       </p>
     </div>
@@ -132,8 +132,8 @@ function SlideSubmit() {
           }`}
         >
           <NumberBadge value={row.secret} size="sm" />
-          <ArrowRight className="w-4 h-4 text-white/30 shrink-0" />
-          <span className="text-white font-medium">{row.item}</span>
+          <ArrowRight className="w-4 h-4 text-foreground/30 shrink-0" />
+          <span className="text-foreground font-medium">{row.item}</span>
           {row.secret === YOUR_NUMBER && (
             <span className="ml-auto text-xs text-tierlist-blue font-medium">yours</span>
           )}
@@ -154,14 +154,14 @@ function SlideGuess() {
           transition={{ delay: i * 0.1 }}
           className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/30"
         >
-          <span className="text-white font-medium flex-1">
+          <span className="text-foreground font-medium flex-1">
             &ldquo;{row.item}&rdquo;
           </span>
-          <span className="text-xs text-white/40">Maya says</span>
+          <span className="text-xs text-foreground/40">Maya says</span>
           <NumberBadge value={row.guess} tone="yellow" size="sm" />
         </motion.div>
       ))}
-      <p className="text-center text-xs text-white/50 pt-1">
+      <p className="text-center text-xs text-foreground/50 pt-1">
         No names, no order to read into &mdash; and she can&apos;t reuse a number.
       </p>
     </div>
@@ -180,9 +180,9 @@ function SlideScoring() {
               key={row.item}
               className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/30 text-sm"
             >
-              <span className="text-white/80 flex-1 truncate">{row.item}</span>
+              <span className="text-foreground/80 flex-1 truncate">{row.item}</span>
               <NumberBadge value={row.secret} size="sm" />
-              <span className="text-white/30 text-xs">vs</span>
+              <span className="text-foreground/30 text-xs">vs</span>
               <NumberBadge value={row.guess} tone="yellow" size="sm" />
               <span className="w-16 text-right font-bold text-red-400">+{bad} bad</span>
             </div>
@@ -191,9 +191,9 @@ function SlideScoring() {
       </div>
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1.5 text-sm">
-        <div className="flex justify-between text-white/70">
+        <div className="flex justify-between text-foreground/70">
           <span>Maya collects the same</span>
-          <span className="font-bold text-white">+{total} bad</span>
+          <span className="font-bold text-foreground">+{total} bad</span>
         </div>
         <div className="flex justify-between text-green-400">
           <span className="flex items-center gap-1.5">
@@ -202,13 +202,13 @@ function SlideScoring() {
           </span>
           <span className="font-bold">&minus;3 bad</span>
         </div>
-        <div className="flex justify-between border-t border-white/10 pt-1.5 text-white">
+        <div className="flex justify-between border-t border-white/10 pt-1.5 text-foreground">
           <span className="font-medium">Maya&apos;s round</span>
           <span className="font-black">{total - 3} bad</span>
         </div>
       </div>
 
-      <p className="text-center text-xs text-white/60">
+      <p className="text-center text-xs text-foreground/60">
         Once everyone has judged, the{" "}
         <span className="text-yellow-500 font-bold">fewest bad points wins</span>. A total
         never drops below 0.
