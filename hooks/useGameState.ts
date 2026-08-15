@@ -76,25 +76,27 @@ export function useGameState(roomId: string, playerId: string | null) {
       let mySecret: number | null = null;
 
       if (currentRound) {
-        // Fetch secrets (only for non-judge or during results)
-        const isJudge = currentRound.judge_id === playerId;
-
-        if (!isJudge || currentRound.phase === "results") {
+        // Secret numbers are hidden from everyone but their owner until the
+        // round is over, so a live round only ever fetches your own.
+        if (currentRound.phase === "results") {
           const { data: secretsData } = await supabase
             .from("secrets")
             .select("*")
             .eq("round_id", currentRound.id);
 
           secrets = secretsData || [];
+        } else if (playerId) {
+          const { data: secretsData } = await supabase
+            .from("secrets")
+            .select("*")
+            .eq("round_id", currentRound.id)
+            .eq("player_id", playerId);
 
-          // Get current player's secret
-          if (playerId) {
-            const playerSecret = secrets.find((s) => s.player_id === playerId);
-            mySecret = playerSecret?.value || null;
-          }
-        } else if (isJudge && playerId) {
-          // Judge can only see their own non-existent secret
-          mySecret = null;
+          secrets = secretsData || [];
+        }
+
+        if (playerId) {
+          mySecret = secrets.find((s) => s.player_id === playerId)?.value ?? null;
         }
 
         // Fetch submissions
@@ -315,7 +317,7 @@ export function useGameState(roomId: string, playerId: string | null) {
     async (
       guesses: Array<{
         player_id: string;
-        position_guess: number;
+        number_guess: number;
       }>
     ) => {
       if (!gameState.currentRound || !playerId) return;
@@ -426,18 +428,13 @@ export function useGameState(roomId: string, playerId: string | null) {
     }, 2000 + Math.random() * 3000);
   }, [gameState.currentRound, gameState.currentPlayer, gameState.players, gameState.submissions, supabase]);
 
-  // Reset game for new round
+  // Rematch: clears bad points and the locked-in game length server-side.
   const resetGame = useCallback(async () => {
-    // Reset all player scores and start fresh
-    await supabase
-      .from("players")
-      .update({ score: 0, is_judge: false })
-      .eq("room_id", roomId);
-
-    await supabase
-      .from("rooms")
-      .update({ status: "waiting", current_round: 0 })
-      .eq("id", roomId);
+    const { error } = await supabase.rpc("reset_game", { p_room_id: roomId });
+    if (error) {
+      console.error("Error resetting game:", error);
+      throw error;
+    }
   }, [roomId, supabase]);
 
   return {

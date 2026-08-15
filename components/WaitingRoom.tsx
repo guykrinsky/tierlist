@@ -105,6 +105,9 @@ export function WaitingRoom({
   const minPlayers = 3;
   const maxPlayers = 10;
   const canStart = players.length >= minPlayers;
+  // Bots never judge, so the game length follows the human players
+  const humanCount = players.filter((p) => !p.is_bot).length;
+  const plannedRounds = Math.max(1, humanCount) * room.rounds_per_player;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -131,7 +134,7 @@ export function WaitingRoom({
               className="mt-3"
             >
               {room.name ? (
-                <p className="text-lg font-medium text-white">{room.name}</p>
+                <p className="text-lg font-medium text-foreground">{room.name}</p>
               ) : null}
               <p className="text-sm text-muted-foreground">Waiting Room</p>
             </motion.div>
@@ -148,7 +151,7 @@ export function WaitingRoom({
             <CardContent className="px-4 sm:px-6 pb-4">
               <div className="flex items-center justify-center gap-3">
                 <motion.div 
-                  className="text-2xl sm:text-4xl font-black tracking-[0.15em] sm:tracking-[0.2em] text-white bg-tierlist-blue/20 px-4 py-2 rounded-xl border border-tierlist-blue/30"
+                  className="text-2xl sm:text-4xl font-black tracking-[0.15em] sm:tracking-[0.2em] text-foreground bg-tierlist-blue/20 px-4 py-2 rounded-xl border border-tierlist-blue/30"
                   whileHover={{ scale: 1.02 }}
                 >
                   {room.id}
@@ -224,7 +227,7 @@ export function WaitingRoom({
                       ) : (
                         <div className="status-dot online" />
                       )}
-                      <span className="font-medium text-white text-sm">{player.name}</span>
+                      <span className="font-medium text-foreground text-sm">{player.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {player.is_bot && (
@@ -245,7 +248,7 @@ export function WaitingRoom({
                       {player.is_bot && currentPlayer.is_host && (
                         <button
                           onClick={() => handleRemoveBot(player.id)}
-                          className="p-1 rounded-full text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                          className="p-1 rounded-full text-foreground/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
                           aria-label={`Remove ${player.name}`}
                         >
                           <X className="w-3.5 h-3.5" />
@@ -277,6 +280,11 @@ export function WaitingRoom({
                   Playing alone? Add {minPlayers - players.length} bot{minPlayers - players.length !== 1 ? "s" : ""} and you&apos;ll be the judge every round.
                 </p>
               )}
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                {plannedRounds} round{plannedRounds !== 1 ? "s" : ""} &bull; everyone judges{" "}
+                {room.rounds_per_player === 1 ? "once" : `${room.rounds_per_player} times`} &bull;
+                fewest bad points wins
+              </p>
             </CardContent>
           </Card>
 

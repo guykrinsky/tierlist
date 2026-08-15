@@ -72,9 +72,12 @@
   background: hsl(var(--primary) / 0.8);
 }
 
-/* Gradient backgrounds - clean dark blue */
+/* Gradient backgrounds - clean dark blue.
+   background-image, not the `background` shorthand: body stacks this with
+   .branded-bg, and the shorthand would reset background-color to transparent,
+   dropping the dark --background out from under the white text. */
 .gradient-bg {
-  background: linear-gradient(
+  background-image: linear-gradient(
     180deg,
     hsl(222, 47%, 11%) 0%,
     hsl(222, 47%, 13%) 100%
@@ -199,11 +202,16 @@
 .status-dot.waiting { @apply bg-yellow-500 shadow-lg shadow-yellow-500/50 animate-pulse; }
 .status-dot.submitted { @apply bg-tierlist-blue shadow-lg shadow-tierlist-blue/50; }
 
-/* Branded background pattern - subtle dark blue */
+/* Branded background pattern - subtle dark blue.
+   Body carries .gradient-bg and .branded-bg together and this rule comes last,
+   so it owns background-image for both: the base gradient is stacked underneath
+   the glows here rather than being overridden away. Never the `background`
+   shorthand - that would reset background-color and leave the page white. */
 .branded-bg {
-  background: 
+  background-image:
     radial-gradient(ellipse at 20% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 100%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+    radial-gradient(ellipse at 80% 100%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+    linear-gradient(180deg, hsl(222, 47%, 11%) 0%, hsl(222, 47%, 13%) 100%);
 }
 
 /* Phase transition animation */
