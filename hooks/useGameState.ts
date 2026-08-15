@@ -388,7 +388,7 @@ export function useGameState(roomId: string, playerId: string | null) {
 
   // Bots don't have clients, so the host's client drives their turns:
   // once per round, after a human-feeling delay, ask the server to
-  // submit answers for all bots. play_bot_turns is idempotent, keeps
+  // submit answers for all bots. /api/bot-answers is idempotent, keeps
   // secrets server-side, and advances the phase when everyone is in.
   const botTurnRoundRef = useRef<string | null>(null);
 
@@ -411,13 +411,17 @@ export function useGameState(roomId: string, playerId: string | null) {
     // No cleanup on purpose: effect re-runs (new submissions arriving)
     // must not cancel the pending bot turn.
     setTimeout(() => {
-      supabase
-        .rpc("play_bot_turns", { p_round_id: round.id })
-        .then(({ error }) => {
-          if (error) {
-            console.error("Error playing bot turns:", error);
-            botTurnRoundRef.current = null; // allow a retry
-          }
+      fetch("/api/bot-answers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roundId: round.id }),
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error(`Bot answers failed: ${response.status}`);
+        })
+        .catch((error) => {
+          console.error("Error playing bot turns:", error);
+          botTurnRoundRef.current = null; // allow a retry
         });
     }, 2000 + Math.random() * 3000);
   }, [gameState.currentRound, gameState.currentPlayer, gameState.players, gameState.submissions, supabase]);

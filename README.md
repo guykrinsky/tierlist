@@ -32,7 +32,7 @@ The Judge ranks each player's answer by **position** (lowest number → highest 
 ## ✨ Features
 
 - 🎲 **250+ Categories** - From "Cereal Mascots You'd Trust with Your Life" to "Foods That Look Disgusting But Slap"
-- 🤖 **Bot Players** - Short on friends? The host can add bots that answer with number-flavored hints. Add two bots and you can even play solo as the permanent judge!
+- 🤖 **Bot Players** - Short on friends? The host can add bots that play like real players: they read the category and name an actual thing that matches their secret number. Add two bots and you can even play solo as the permanent judge!
 - 🃏 **Joker Category** - Judge can create custom categories
 - ⏱️ **60-Second Timer** - Keep the game moving
 - 🎵 **Background Music** - Add your own theme song
@@ -70,6 +70,9 @@ Create a `.env.local` file:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Optional, but needed for good bot players — see "How bots answer" below.
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ### 4. Run the Game
@@ -79,6 +82,29 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and start playing!
+
+## 🤖 How Bots Answer
+
+A bot has the same job as a human player: it gets a secret number from 1 to 10 and has to name something from the category that sits at that spot on the scale, without giving the number away.
+
+When the host's browser sees bots still owing a submission, it calls `POST /api/bot-answers` with the round id. That route is the only place bot answers are produced:
+
+1. `pending_bot_turns` returns the category, the bots waiting to answer, and their secret numbers — so secrets never reach any browser.
+2. All of the round's answers are generated in **one** Claude call (`claude-haiku-4-5`), which lets the model keep them distinct and correctly ordered relative to each other.
+3. Every answer is validated (`lib/bots/validate.ts`): kept short, no self-grading language like "something relatively tasty" or "above average", and no leaking of the number. A rejected answer costs one retry, then a fallback.
+4. `submit_bot_answer` records each one, a beat apart, so bots trickle in like people rather than appearing all at once.
+
+The route takes nothing but a round id — the category and numbers come from the database, so it can't be used to run arbitrary prompts.
+
+**Without `ANTHROPIC_API_KEY`**, or if the API call fails, bots fall back to a small hand-written list of concrete items in `lib/bots/fallback.ts`. They'll still name a real thing rather than describe their number, but the item only loosely matches the category — this is a safety net, not the intended experience.
+
+To see what bots would say without starting a game:
+
+```bash
+npm run bots:preview                       # a spread of categories, numbers 1-10
+npm run bots:preview "Tasty food"          # one category, numbers 1-10
+npm run bots:preview "Tasty food" 1 5 10   # one category, specific numbers
+```
 
 ## 🎵 Adding Background Music
 
@@ -95,6 +121,7 @@ Open [http://localhost:3000](http://localhost:3000) and start playing!
 3. Add your environment variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `ANTHROPIC_API_KEY` (server-side only — do **not** prefix it with `NEXT_PUBLIC_`)
 4. Deploy!
 
 ### Configure Supabase for Production
@@ -119,7 +146,10 @@ tierlist/
 │   ├── page.tsx           # Home page with room list
 │   ├── create/            # Create room page
 │   ├── join/              # Join room page
-│   └── room/[roomId]/     # Game room page
+│   ├── room/[roomId]/     # Game room page
+│   └── api/bot-answers/   # Generates bot submissions for a round
+├── lib/
+│   └── bots/              # Bot answer generation, validation, fallbacks
 ├── components/            # React components
 │   ├── ui/               # Base UI components
 │   ├── CategorySelector  # Judge's category picker

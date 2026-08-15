@@ -349,48 +349,50 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Make every bot in the round submit an answer that hints at its secret
--- number, like a human player would. Runs server-side so the judge's
--- client never sees the secrets. Idempotent: bots that already submitted
--- are skipped, so it's safe for the host client to call this repeatedly.
-CREATE OR REPLACE FUNCTION play_bot_turns(p_round_id UUID)
+-- Bot answers used to be generated here, from a canned phrase per secret
+-- number. That ignored the category and handed the judge the answer, so it
+-- now lives in /api/bot-answers, which reads the category and names a real
+-- thing. The two functions below are what that route calls.
+DROP FUNCTION IF EXISTS play_bot_turns(UUID);
+
+-- Bots still waiting to answer this round, with the secrets they need to
+-- answer for. Keeping this in one function means secret access has one
+-- door, should the wide-open RLS policies above ever be tightened.
+CREATE OR REPLACE FUNCTION pending_bot_turns(p_round_id UUID)
+RETURNS TABLE (player_id UUID, player_name TEXT, value INTEGER, category TEXT) AS $$
+  SELECT p.id, p.name, s.value, r.category
+  FROM players p
+  JOIN rounds r ON r.id = p_round_id AND r.room_id = p.room_id
+  JOIN secrets s ON s.round_id = p_round_id AND s.player_id = p.id
+  WHERE p.is_bot = true
+    AND p.id <> r.judge_id
+    AND r.phase = 'submitting'
+    AND NOT EXISTS (
+      SELECT 1 FROM submissions sub
+      WHERE sub.round_id = p_round_id AND sub.player_id = p.id
+    )
+  ORDER BY p.created_at;
+$$ LANGUAGE sql;
+
+-- Record one bot's answer. The WHERE clause is the guard: this can only ever
+-- write a submission for a bot, in this round's room, while the round is still
+-- taking submissions. Idempotent, so a retried route call is harmless.
+CREATE OR REPLACE FUNCTION submit_bot_answer(
+  p_round_id UUID,
+  p_player_id UUID,
+  p_text TEXT
+)
 RETURNS VOID AS $$
-DECLARE
-  v_bot RECORD;
-  v_phrases TEXT[];
-  v_text TEXT;
 BEGIN
-  FOR v_bot IN
-    SELECT p.id, s.value
-    FROM players p
-    JOIN rounds r ON r.id = p_round_id AND r.room_id = p.room_id
-    JOIN secrets s ON s.round_id = p_round_id AND s.player_id = p.id
-    WHERE p.is_bot = true
-      AND r.phase = 'submitting'
-      AND NOT EXISTS (
-        SELECT 1 FROM submissions sub
-        WHERE sub.round_id = p_round_id AND sub.player_id = p.id
-      )
-  LOOP
-    v_phrases := CASE v_bot.value
-      WHEN 1 THEN ARRAY['the absolute worst one there is', 'the bottom of the barrel', 'the single worst pick imaginable']
-      WHEN 2 THEN ARRAY['a really bad one', 'something close to the worst', 'a truly awful choice']
-      WHEN 3 THEN ARRAY['a pretty weak one', 'a below-average pick', 'not the worst, but still bad']
-      WHEN 4 THEN ARRAY['a slightly disappointing one', 'a bit under mid', 'almost average, but worse']
-      WHEN 5 THEN ARRAY['a perfectly mid one', 'the most average option ever', 'dead middle of the pack']
-      WHEN 6 THEN ARRAY['a slightly above average one', 'decent, nothing special', 'just a notch over mid']
-      WHEN 7 THEN ARRAY['a genuinely good one', 'a solid, respectable pick', 'clearly above average']
-      WHEN 8 THEN ARRAY['a really good one', 'a great choice, honestly', 'near the top for sure']
-      WHEN 9 THEN ARRAY['an amazing one', 'almost the best there is', 'top shelf, just short of perfect']
-      ELSE ARRAY['the best one in existence', 'the undisputed number one', 'literal perfection']
-    END;
-
-    v_text := v_phrases[1 + floor(random() * array_length(v_phrases, 1))::int];
-
-    INSERT INTO submissions (round_id, player_id, text)
-    VALUES (p_round_id, v_bot.id, v_text)
-    ON CONFLICT (round_id, player_id) DO NOTHING;
-  END LOOP;
+  INSERT INTO submissions (round_id, player_id, text)
+  SELECT p_round_id, p.id, p_text
+  FROM players p
+  JOIN rounds r ON r.id = p_round_id AND r.room_id = p.room_id
+  WHERE p.id = p_player_id
+    AND p.is_bot = true
+    AND p.id <> r.judge_id
+    AND r.phase = 'submitting'
+  ON CONFLICT (round_id, player_id) DO NOTHING;
 
   PERFORM advance_round_if_complete(p_round_id);
 END;
