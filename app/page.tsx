@@ -251,7 +251,7 @@ export default function HomePage() {
               >
                 Real-time party game about how other people think.
                 <br className="hidden sm:block" />
-                <span className="text-white font-medium">
+                <span className="text-foreground font-medium">
                   Guess the numbers, collect the fewest bad points!
                 </span>
               </motion.p>
@@ -272,7 +272,7 @@ export default function HomePage() {
                       transition={{ delay: 0.7 + i * 0.1, type: "spring" }}
                       className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl number-badge flex items-center justify-center"
                     >
-                      <span className="text-xl sm:text-2xl font-black text-white">{num}</span>
+                      <span className="text-xl sm:text-2xl font-black text-foreground">{num}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -322,7 +322,7 @@ export default function HomePage() {
                     .getElementById("how-to-play")
                     ?.scrollIntoView({ behavior: "smooth" })
                 }
-                className="mt-12 flex flex-col items-center gap-2 text-muted-foreground hover:text-white transition-colors mx-auto"
+                className="mt-12 flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mx-auto"
               >
                 <span className="text-sm">See the rules at a glance</span>
                 <motion.div
@@ -403,7 +403,7 @@ export default function HomePage() {
                               </span>
                             </div>
                             {room.name && (
-                              <span className="text-white font-medium truncate text-sm">
+                              <span className="text-foreground font-medium truncate text-sm">
                                 {room.name}
                               </span>
                             )}
@@ -440,7 +440,7 @@ export default function HomePage() {
                                 {room.id}
                               </span>
                               {room.name && (
-                                <span className="text-white font-medium truncate">
+                                <span className="text-foreground font-medium truncate">
                                   {room.name}
                                 </span>
                               )}
@@ -494,7 +494,7 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-10"
             >
-              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
                 How to Play
               </h2>
               <p className="text-muted-foreground">
@@ -535,7 +535,7 @@ export default function HomePage() {
                         <div className="text-xs sm:text-sm font-bold text-tierlist-blue mb-1">
                           Step {index + 1}
                         </div>
-                        <h3 className="font-bold text-white mb-2 text-sm sm:text-base">
+                        <h3 className="font-bold text-foreground mb-2 text-sm sm:text-base">
                           {step.title}
                         </h3>
                         <p className="text-xs sm:text-sm text-muted-foreground">
@@ -564,7 +564,7 @@ export default function HomePage() {
                       </div>
                     </div>
                     <div className="flex-1 text-center lg:text-left">
-                      <h3 className="text-xl font-bold text-white mb-1">Bad Points</h3>
+                      <h3 className="text-xl font-bold text-foreground mb-1">Bad Points</h3>
                       <p className="text-sm text-muted-foreground mb-4">
                         You collect bad points &mdash; and lower is always better.
                       </p>
@@ -574,7 +574,7 @@ export default function HomePage() {
                             <Target className="w-4 h-4 text-tierlist-red" />
                           </div>
                           <div className="text-left">
-                            <p className="font-medium text-white text-sm">Every Answer</p>
+                            <p className="font-medium text-foreground text-sm">Every Answer</p>
                             <p className="text-xs text-muted-foreground">
                               How far the Judge&apos;s guess was off, given to that player AND
                               the Judge
@@ -586,7 +586,7 @@ export default function HomePage() {
                             <TrendingDown className="w-4 h-4 text-tierlist-blue" />
                           </div>
                           <div className="text-left">
-                            <p className="font-medium text-white text-sm">Perfect Order</p>
+                            <p className="font-medium text-foreground text-sm">Perfect Order</p>
                             <p className="text-xs text-muted-foreground">
                               Judge wipes off 3 bad points for getting the order right, even
                               with every number wrong
@@ -617,7 +617,7 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-2xl font-bold text-white mb-4">
+              <h2 className="text-2xl font-bold text-foreground mb-4">
                 Ready to Play?
               </h2>
               <p className="text-muted-foreground mb-6">
@@ -655,7 +655,7 @@ export default function HomePage() {
             </DialogTitle>
             <DialogDescription>
               {quickJoinRoom?.name ? (
-                <>Joining <span className="text-white font-medium">{quickJoinRoom.name}</span></>
+                <>Joining <span className="text-foreground font-medium">{quickJoinRoom.name}</span></>
               ) : (
                 <>Joining room <span className="text-tierlist-blue font-mono">{quickJoinRoom?.id}</span></>
               )}

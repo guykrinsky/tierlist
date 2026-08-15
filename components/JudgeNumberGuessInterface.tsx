@@ -64,10 +64,10 @@ export function JudgeNumberGuessInterface({
           <Target className="w-5 h-5 text-yellow-500" />
           <span className="font-bold text-yellow-500">GUESS THE NUMBERS</span>
         </div>
-        <h2 className="text-2xl font-bold text-white">
+        <h2 className="text-2xl font-bold text-foreground">
           Give every answer the number you think it is
         </h2>
-        <p className="text-white/60 mt-2">
+        <p className="text-foreground/60 mt-2">
           1 = worst &bull; 10 = best &bull; each number can only be used once
         </p>
       </div>
@@ -86,7 +86,7 @@ export function JudgeNumberGuessInterface({
               <div className="bg-muted/30 rounded-lg p-4 border border-white/10 mb-3">
                 <div className="flex items-start gap-3">
                   <MessageSquare className="w-5 h-5 text-tierlist-blue mt-0.5 flex-shrink-0" />
-                  <p className="text-lg font-medium text-white leading-relaxed flex-1">
+                  <p className="text-lg font-medium text-foreground leading-relaxed flex-1">
                     &ldquo;{item.submission}&rdquo;
                   </p>
                 </div>
@@ -105,10 +105,10 @@ export function JudgeNumberGuessInterface({
                       disabled={isTaken || isSubmitting}
                       className={`h-11 rounded-lg font-bold transition-all ${
                         isMine
-                          ? "bg-tierlist-blue text-white"
+                          ? "bg-tierlist-blue text-foreground"
                           : isTaken
-                          ? "bg-muted/20 text-white/20 cursor-not-allowed"
-                          : "bg-muted/40 text-white/70 hover:bg-muted/70 active:bg-muted"
+                          ? "bg-muted/20 text-foreground/20 cursor-not-allowed"
+                          : "bg-muted/40 text-foreground/70 hover:bg-muted/70 active:bg-muted"
                       }`}
                     >
                       {num}

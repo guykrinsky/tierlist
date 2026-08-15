@@ -146,8 +146,8 @@ export default function CreatePage() {
                       onClick={() => setRoundsPerPlayer(rounds)}
                       className={`h-12 rounded-lg border font-bold transition-all ${
                         roundsPerPlayer === rounds
-                          ? "border-tierlist-blue bg-tierlist-blue/20 text-white"
-                          : "border-border text-white/60 hover:border-tierlist-blue/50 hover:bg-muted/30"
+                          ? "border-tierlist-blue bg-tierlist-blue/20 text-foreground"
+                          : "border-border text-foreground/60 hover:border-tierlist-blue/50 hover:bg-muted/30"
                       }`}
                     >
                       {rounds}

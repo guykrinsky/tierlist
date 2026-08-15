@@ -41,8 +41,8 @@ export function ResultScreen({
         >
           <Trophy className="w-16 h-16 mx-auto text-yellow-500 mb-4" />
         </motion.div>
-        <h2 className="text-3xl font-bold text-white mb-2">Round Complete!</h2>
-        <p className="text-white/60">
+        <h2 className="text-3xl font-bold text-foreground mb-2">Round Complete!</h2>
+        <p className="text-foreground/60">
           Category: <span className="text-tierlist-blue font-medium">{category}</span>
         </p>
       </div>
@@ -60,13 +60,13 @@ export function ResultScreen({
         }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/60 text-sm">Judge</p>
-              <p className="text-xl font-bold text-white">{judgeName}</p>
+              <p className="text-foreground/60 text-sm">Judge</p>
+              <p className="text-xl font-bold text-foreground">{judgeName}</p>
             </div>
             <div className="text-right">
-              <p className="text-white/60 text-sm">Bad points this round</p>
+              <p className="text-foreground/60 text-sm">Bad points this round</p>
               <p className={`text-3xl font-black ${
-                judgeBadPoints <= 0 ? "text-green-400" : "text-white"
+                judgeBadPoints <= 0 ? "text-green-400" : "text-foreground"
               }`}>
                 {judgeBadPoints > 0 ? `+${judgeBadPoints}` : judgeBadPoints}
               </p>
@@ -93,12 +93,12 @@ export function ResultScreen({
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                  <X className="w-4 h-4 text-white/60" />
+                <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
+                  <X className="w-4 h-4 text-foreground/60" />
                 </div>
                 <div>
-                  <p className="text-white/80 font-medium">No Order Bonus</p>
-                  <p className="text-white/60 text-sm">
+                  <p className="text-foreground/80 font-medium">No Order Bonus</p>
+                  <p className="text-foreground/60 text-sm">
                     Some answers ended up in the wrong order
                   </p>
                 </div>
@@ -110,7 +110,7 @@ export function ResultScreen({
 
       {/* Player Results */}
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-white">Results</h3>
+        <h3 className="text-lg font-semibold text-foreground">Results</h3>
         {sortedResults.map((result, index) => (
           <motion.div
             key={result.playerId}
@@ -131,13 +131,13 @@ export function ResultScreen({
                 <div className="flex items-center gap-4">
                 {/* Number Badge */}
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-tierlist-blue to-tierlist-blue-dark flex items-center justify-center">
-                  <span className="text-2xl font-black text-white">{result.secretNumber}</span>
+                  <span className="text-2xl font-black text-foreground">{result.secretNumber}</span>
                 </div>
 
                 {/* Player Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-white truncate">{result.playerName}</p>
-                  <p className="text-white/50 text-sm truncate">&quot;{result.submission}&quot;</p>
+                  <p className="font-semibold text-foreground truncate">{result.playerName}</p>
+                  <p className="text-foreground/50 text-sm truncate">&quot;{result.submission}&quot;</p>
                 </div>
 
                 {/* Results */}
@@ -159,7 +159,7 @@ export function ResultScreen({
                   </div>
 
                   {/* Real number vs Judge's guess */}
-                  <div className="text-xs text-white/60">
+                  <div className="text-xs text-foreground/60">
                     <div>Real: {result.secretNumber}</div>
                     <div>Judge: {result.numberGuess ?? "—"}</div>
                   </div>
@@ -188,14 +188,14 @@ export function ResultScreen({
           <Button
             onClick={onNextRound}
             size="lg"
-            className="w-full h-14 text-lg bg-tierlist-blue hover:bg-tierlist-blue-dark text-white"
+            className="w-full h-14 text-lg bg-tierlist-blue hover:bg-tierlist-blue-dark text-foreground"
           >
             {isLastRound ? "Final Results" : "Next Round"}
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
         </motion.div>
       ) : (
-        <p className="text-center text-white/50">
+        <p className="text-center text-foreground/50">
           Waiting for host to continue...
         </p>
       )}

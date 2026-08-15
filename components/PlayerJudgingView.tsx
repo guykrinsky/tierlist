@@ -28,10 +28,10 @@ export function PlayerJudgingView({
             <Target className="w-6 h-6 text-yellow-500" />
           </motion.div>
           <div className="text-center">
-            <p className="text-white font-semibold">
+            <p className="text-foreground font-semibold">
               <span className="text-yellow-500">{judgeName}</span> is guessing the numbers...
             </p>
-            <p className="text-white/60 text-sm mt-1">
+            <p className="text-foreground/60 text-sm mt-1">
               Everyone&apos;s numbers stay secret until the results
             </p>
           </div>
@@ -42,11 +42,11 @@ export function PlayerJudgingView({
       {mySecret !== null && (
         <Card className="p-4 bg-card border-border">
           <div className="flex items-center justify-center gap-3">
-            <span className="text-white/50 text-sm uppercase tracking-wide">
+            <span className="text-foreground/50 text-sm uppercase tracking-wide">
               Your number
             </span>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-tierlist-blue to-tierlist-blue-dark flex items-center justify-center">
-              <span className="text-2xl font-black text-white">{mySecret}</span>
+              <span className="text-2xl font-black text-foreground">{mySecret}</span>
             </div>
           </div>
         </Card>
@@ -56,11 +56,11 @@ export function PlayerJudgingView({
       <Card className="p-6 bg-card border-border">
         <div className="flex items-center gap-2 mb-4">
           <MessageSquare className="w-5 h-5 text-tierlist-blue" />
-          <h3 className="text-lg font-bold text-white">
+          <h3 className="text-lg font-bold text-foreground">
             The Answers ({submissionTexts.length})
           </h3>
         </div>
-        <p className="text-white/60 text-sm mb-4">
+        <p className="text-foreground/60 text-sm mb-4">
           The same list {judgeName} is looking at &mdash; no names, no numbers.
         </p>
 
@@ -73,7 +73,7 @@ export function PlayerJudgingView({
               transition={{ delay: index * 0.1 }}
               className="p-4 rounded-xl bg-muted/30 border border-white/10"
             >
-              <p className="text-white/90 leading-relaxed">&ldquo;{text}&rdquo;</p>
+              <p className="text-foreground/90 leading-relaxed">&ldquo;{text}&rdquo;</p>
             </motion.div>
           ))}
         </div>

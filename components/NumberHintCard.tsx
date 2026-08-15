@@ -37,12 +37,12 @@ export function NumberHintCard({ number, category }: NumberHintCardProps) {
     >
       <Card className="p-6 bg-card border-border text-center">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-white/50 text-sm uppercase tracking-wide">
+          <span className="text-foreground/50 text-sm uppercase tracking-wide">
             Your Secret Number
           </span>
           <button
             onClick={() => setIsHidden(!isHidden)}
-            className="p-2 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+            className="p-2 rounded-lg hover:bg-white/10 text-foreground/50 hover:text-foreground transition-colors"
           >
             {isHidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
           </button>
@@ -54,15 +54,15 @@ export function NumberHintCard({ number, category }: NumberHintCardProps) {
           } flex items-center justify-center shadow-lg mb-4`}
           whileHover={{ scale: 1.05 }}
         >
-          <span className="text-5xl font-black text-white">
+          <span className="text-5xl font-black text-foreground">
             {isHidden ? "?" : number}
           </span>
         </motion.div>
 
-        <p className="text-white font-semibold text-lg mb-1">
+        <p className="text-foreground font-semibold text-lg mb-1">
           {isHidden ? "Hidden" : getHintText(number)}
         </p>
-        <p className="text-white/50 text-sm">
+        <p className="text-foreground/50 text-sm">
           Pick a <span className="text-tierlist-blue">{category}</span> that matches!
         </p>
       </Card>

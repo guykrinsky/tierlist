@@ -57,7 +57,7 @@ export function PlayerSpeechInput({
     >
       <Card className="p-6 bg-card border-border">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white font-semibold">Your Answer</h3>
+          <h3 className="text-foreground font-semibold">Your Answer</h3>
           <Timer
             duration={timerDuration}
             onTimeUp={handleTimeUp}
@@ -71,7 +71,7 @@ export function PlayerSpeechInput({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={`Enter a ${category.toLowerCase()}...`}
-            className="flex-1 h-12 bg-muted/30 border-border text-white placeholder:text-white/40"
+            className="flex-1 h-12 bg-muted/30 border-border text-foreground placeholder:text-foreground/40"
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             disabled={isSubmitting}
             autoFocus
@@ -79,7 +79,7 @@ export function PlayerSpeechInput({
           <Button
             onClick={handleSubmit}
             disabled={!text.trim() || isSubmitting}
-            className="h-12 px-6 bg-tierlist-blue hover:bg-tierlist-blue-dark text-white"
+            className="h-12 px-6 bg-tierlist-blue hover:bg-tierlist-blue-dark text-foreground"
           >
             {isSubmitting ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -89,7 +89,7 @@ export function PlayerSpeechInput({
           </Button>
         </div>
 
-        <p className="text-white/40 text-xs mt-3">
+        <p className="text-foreground/40 text-xs mt-3">
           💡 Pick something that hints at your number!
         </p>
       </Card>
