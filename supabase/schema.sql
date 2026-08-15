@@ -707,9 +707,10 @@ BEGIN
     END IF;
   END IF;
 
-  -- Bad points may never become negative
+  -- Bad points may go negative: a judge who keeps earning the order bonus
+  -- while guessing accurately should be rewarded past zero, not capped at it.
   UPDATE players
-  SET bad_points = GREATEST(0, bad_points + v_judge_points)
+  SET bad_points = bad_points + v_judge_points
   WHERE id = p_judge_id;
 
   UPDATE rounds SET phase = 'results', scores_applied = true WHERE id = p_round_id;

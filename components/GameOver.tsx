@@ -88,7 +88,7 @@ export function GameOver({ players, onPlayAgain, onGoHome, isHost }: GameOverPro
           </h2>
           <p className="text-xl text-muted-foreground">
             <span className="text-tierlist-blue font-bold">{winner.name}</span> wins with{" "}
-            {winner.bad_points} bad point{winner.bad_points === 1 ? "" : "s"}!
+            {winner.bad_points} bad point{Math.abs(winner.bad_points) === 1 ? "" : "s"}!
           </p>
         </motion.div>
 
